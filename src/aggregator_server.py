@@ -36,7 +36,7 @@ parser.add_argument('--listener', '-l', dest='listener',
                     type=str,
                     help='Locators to listen on.')
 parser.add_argument('--selector', '-s', dest='selector',
-                    default='/demo/example/**',
+                    default='/federated/nodes/**',
                     type=str,
                     help='The selection of resources to subscribe.')
 
@@ -54,9 +54,13 @@ selector = args.selector
 def listener(change):
     print(">> [Subscription listener] received {:?} for {} : {} with timestamp {}"
           .format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(), change.timestamp))
-    f = open('params1.pt', 'wb')
-    f.write(bytearray(change.value.get_content()))
-    f.close()
+    if change.value == 'application/octet-stream':
+        f = open('params1.pt', 'wb')
+        f.write(bytearray(change.value.get_content()))
+        f.close()
+        print(">> File saved")
+    else:
+        print(">> Content: {}".format(change.value))
 
 
 # initiate logging
