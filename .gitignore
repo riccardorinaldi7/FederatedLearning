@@ -1,0 +1,2 @@
+# ignore all parameter files in git
+/src/*.pt

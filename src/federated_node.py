@@ -21,6 +21,7 @@ from torchvision import datasets, transforms
 from torch import nn, optim
 import torch.nn.functional as F
 import uuid
+
 # import helper
 
 print('Libraries loaded...')
@@ -63,7 +64,7 @@ path = args.path
 value = args.value
 
 # use UUID module to create a custom folder
-path = path + "/" + uuid.getnode()
+path = path + "/" + str(uuid.getnode())
 print("Using path: {}".format(path))
 
 # --- zenoh-net code --- --- --- --- --- --- --- --- --- --- ---
@@ -100,14 +101,6 @@ class Classifier(nn.Module):
         x = F.log_softmax(self.fc4(x), dim=1)
 
         return x
-
-
-model = Classifier()
-criterion = nn.NLLLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.003)
-
-
-# --- init Federated Protocol --- --- --- --- --- --- --- ---
 
 
 # --- torch code for training --- --- --- --- --- --- --- --- -
@@ -162,5 +155,15 @@ def send_parameters():
     print("Put Data ('{}': '{}')...".format(path, value))
     workspace.put(path, value)
 
+
+# --- init Federated Protocol --- --- --- --- --- --- --- ---
+
+model = Classifier()
+criterion = nn.NLLLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.003)
+input("Press enter to train the model")
+download_and_train()
+input("Press enter to send parameters to the server")
+send_parameters()
 
 z.close()

@@ -11,10 +11,13 @@
 #   ADLINK zenoh team, <zenoh@adlink-labs.tech>
 
 import sys
-import time
+# import time
 import argparse
 import zenoh
 from zenoh import Zenoh
+import torch
+import torch.nn.functional as F
+from torch import nn
 
 # --- Command line argument parsing --- --- --- --- --- ---
 parser = argparse.ArgumentParser(
@@ -41,24 +44,88 @@ parser.add_argument('--selector', '-s', dest='selector',
                     help='The selection of resources to subscribe.')
 
 args = parser.parse_args()
-conf = { "mode": args.mode }
+conf = {"mode": args.mode}
 if args.peer is not None:
     conf["peer"] = ",".join(args.peer)
 if args.listener is not None:
     conf["listener"] = ",".join(args.listener)
 selector = args.selector
 
+# Hyperparameters for federated learning --- --- --- --- --- ---
+
+num_clients = 2
+# num_selected = 6
+# num_rounds = 150
+# epochs = 5
+# batch_size = 32
+
+trained_parameters = list()
+
+
 # zenoh-net code  --- --- --- --- --- --- --- --- --- --- ---
+
+
+class Classifier(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(784, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, 10)
+
+    def forward(self, x):
+        # make sure input tensor is flattened
+        x = x.view(x.shape[0], -1)
+
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.log_softmax(self.fc4(x), dim=1)
+
+        return x
+
+
+global_model = Classifier()
+
+
+def federated_averaging():
+    if len(trained_parameters) == num_clients:
+        print(">> [Federated averaging] begin averaging between {} models".format(len(trained_parameters)))
+        client_models = list()
+        for filename in trained_parameters:
+            model = Classifier()
+            model.load_state_dict(torch.load(filename))
+            model.eval()
+            client_models.append(model)
+        print(">> [Federated averaging] {} model loaded".format(len(client_models)))
+        # This will take simple mean of the weights of models #
+        global_dict = global_model.state_dict()
+        for k in global_dict.keys():
+            global_dict[k] = torch.stack([client_models[i].state_dict()[k].float() for i in range(len(client_models))], 0).mean(0)
+        global_model.load_state_dict(global_dict)
+        # for model in client_models:
+        #     model.load_state_dict(global_model.state_dict())
+        torch.save(global_model.state_dict(), 'global_model.pt')
+    else:
+        return
 
 
 def listener(change):
     print(">> [Subscription listener] received {:?} for {} : {} with timestamp {}"
           .format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(), change.timestamp))
-    if change.value == 'application/octet-stream':
-        f = open('params1.pt', 'wb')
+    if change.value.encoding_descr() == 'application/octet-stream':
+        node_id = change.path.split('/')[-1]
+        filename = node_id + '.pt'
+        f = open(filename, 'wb')
         f.write(bytearray(change.value.get_content()))
         f.close()
         print(">> File saved")
+        if filename in trained_parameters:
+            print(">> [Subscription listener] something gone wrong. Received twice from a client")
+            return
+        trained_parameters.append(filename)
+        federated_averaging()
+
     else:
         print(">> Content: {}".format(change.value))
 
