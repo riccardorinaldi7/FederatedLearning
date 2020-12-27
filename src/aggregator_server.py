@@ -59,7 +59,7 @@ num_clients = 2
 # epochs = 5
 # batch_size = 32
 
-trained_parameters = list()
+trained_parameters = list()  # contains list of .pt filename
 
 
 # zenoh-net code  --- --- --- --- --- --- --- --- --- --- ---
@@ -133,7 +133,7 @@ def listener(change):
 # initiate logging
 zenoh.init_logger()
 
-print("Openning session...")
+print("Opening session...")
 zenoh = Zenoh(conf)
 
 print("New workspace...")
