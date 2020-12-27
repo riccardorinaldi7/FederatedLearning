@@ -16,6 +16,14 @@ import time
 import argparse
 import zenoh
 from zenoh import Zenoh, Value
+import torch
+from torchvision import datasets, transforms
+from torch import nn, optim
+import torch.nn.functional as F
+import uuid
+# import helper
+
+print('Libraries loaded...')
 
 # --- Command line argument parsing --- --- --- --- --- ---
 parser = argparse.ArgumentParser(
@@ -37,7 +45,7 @@ parser.add_argument('--listener', '-l', dest='listener',
                     type=str,
                     help='Locators to listen on.')
 parser.add_argument('--path', '-p', dest='path',
-                    default='/demo/example/zenoh-python-put',
+                    default='/federated/nodes',
                     type=str,
                     help='The name of the resource to put.')
 parser.add_argument('--value', '-v', dest='value',
@@ -46,7 +54,7 @@ parser.add_argument('--value', '-v', dest='value',
                     help='The value of the resource to put.')
 
 args = parser.parse_args()
-conf = { "mode": args.mode }
+conf = {"mode": args.mode}
 if args.peer is not None:
     conf["peer"] = ",".join(args.peer)
 if args.listener is not None:
@@ -54,86 +62,9 @@ if args.listener is not None:
 path = args.path
 value = args.value
 
-# --- torch code for training --- --- --- --- --- --- --- --- -
-import torch
-from torchvision import datasets, transforms
-from torch import nn, optim
-import torch.nn.functional as F
-#import helper
-
-print('Libraries loaded...')
-
-# Define a transform to normalize the data
-transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Normalize((0.5,), (0.5,))])
-
-print('Downloading dataset...')
-
-# Download and load the training data
-trainset = datasets.MNIST('~/.pytorch/MNIST_data/', download=True, train=True, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
-
-# Download and load the test data
-#testset = datasets.MNIST('~/.pytorch/MNIST_data/', download=True, train=False, transform=transform)
-#testloader = torch.utils.data.DataLoader(testset, batch_size=64, shuffle=True)
-
-print('Defining the model, criterion and optimizer...')
-
-# TODO: Define your network architecture here
-class Classifier(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = nn.Linear(784, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, 10)
-        
-    def forward(self, x):
-        # make sure input tensor is flattened
-        x = x.view(x.shape[0], -1)
-        
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = F.log_softmax(self.fc4(x), dim=1)
-        
-        return x
-    
-#Create the network, define the criterion and optimizer
-model = Classifier()
-criterion = nn.NLLLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.003)
-
-# TODO: Train the network here
-epochs = 1
-
-print("Start training with {} epochs...".format(epochs))
-
-for e in range(epochs):
-    running_loss = 0
-    for images, labels in trainloader:
-        log_ps = model(images)
-        loss = criterion(log_ps, labels)
-        
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        
-        running_loss += loss.item()
-    else:
-        print(f"Training loss: {running_loss/len(trainloader)}")
-        
-print('Model trained!')
-
-torch.save(model.state_dict(), 'parameters.pt')
-
-print('Model saved')
-
-f = open('parameters.pt', 'rb')
-bytes = f.read()
-f.close
-value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, bytes)
-
+# use UUID module to create a custom folder
+path = path + "/" + uuid.getnode()
+print("Using path: {}".format(path))
 
 # --- zenoh-net code --- --- --- --- --- --- --- --- --- --- ---
 
@@ -146,33 +77,90 @@ z = Zenoh(conf)
 print("New workspace...")
 workspace = z.workspace()
 
-torch.save(model.state_dict(), './last.pt')
-f = open('./last.pt')
+# --- Define network architecture, criterion and optimizer --- --- --- --- ---
 
-print("Put Data ('{}': '{}')...".format(path, value))
-workspace.put(path, value)
+print('Defining the model...')
 
 
-# --- Examples of put with other types:
+class Classifier(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(784, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, 10)
 
-# - Integer
-# workspace.put('/demo/example/Integer', 3)
+    def forward(self, x):
+        # make sure input tensor is flattened
+        x = x.view(x.shape[0], -1)
 
-# - Float
-# workspace.put('/demo/example/Float', 3.14)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.log_softmax(self.fc4(x), dim=1)
 
-# - Properties (as a Dictionary with str only)
-# workspace.put('/demo/example/Properties', {'p1': 'v1', 'p2': 'v2'})
+        return x
 
-# - Json (str format)
-# workspace.put('/demo/example/Json',
-#               Value.Json(json.dumps(['foo', {'bar': ('baz', None, 1.0, 2)}])))
 
-# - Raw ('application/octet-stream' encoding by default)
-# workspace.put('/demo/example/Raw', b'\x48\x69\x33'))
+model = Classifier()
+criterion = nn.NLLLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.003)
 
-# - Custom
-# workspace.put('/demo/example/Custom',
-#               Value.Custom('my_encoding', b'\x48\x69\x33'))
+
+# --- init Federated Protocol --- --- --- --- --- --- --- ---
+
+
+# --- torch code for training --- --- --- --- --- --- --- --- -
+def download_and_train():
+    # Define a transform to normalize the data
+    transform = transforms.Compose([transforms.ToTensor(),
+                                    transforms.Normalize((0.5,), (0.5,))])
+
+    print('Downloading dataset...')
+
+    # Download and load the training data
+    trainset = datasets.MNIST('~/.pytorch/MNIST_data/', download=True, train=True, transform=transform)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+
+    # Download and load the test data
+    # testset = datasets.MNIST('~/.pytorch/MNIST_data/', download=True, train=False, transform=transform)
+    # testloader = torch.utils.data.DataLoader(testset, batch_size=64, shuffle=True)
+
+    # Train the network here
+    epochs = 1
+
+    print("Start training with {} epochs...".format(epochs))
+
+    for e in range(epochs):
+        running_loss = 0
+        for images, labels in trainloader:
+            log_ps = model(images)
+            loss = criterion(log_ps, labels)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+        else:
+            print(f"Training loss: {running_loss / len(trainloader)}")
+
+    print('Model trained!')
+
+
+# --- save the parameters and wrap them into a zenoh.Value --- ---
+def send_parameters():
+    torch.save(model.state_dict(), 'parameters.pt')
+    f = open('parameters.pt', 'rb')
+    binary = f.read()
+    f.close
+    value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
+    print('Model saved - zenoh.Value created')
+
+    # --- send parameters with zenoh --- --- --- --- --- --- --- --- ---
+
+    print("Put Data ('{}': '{}')...".format(path, value))
+    workspace.put(path, value)
+
 
 z.close()
