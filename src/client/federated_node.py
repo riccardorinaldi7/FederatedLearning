@@ -142,9 +142,9 @@ def download_and_train():
 
 
 # --- save the parameters and wrap them into a zenoh.Value --- ---
-def send_parameters():
-    torch.save(model.state_dict(), 'parameters.pt')
-    f = open('parameters.pt', 'rb')
+def save_and_send_parameters():
+    torch.save(model.state_dict(), 'my_parameters.pt')
+    f = open('my_parameters.pt', 'rb')
     binary = f.read()
     f.close()
     value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
@@ -166,6 +166,7 @@ def listener(change):
         f.write(bytearray(change.value.get_content()))
         f.close()
         print(">> File saved")
+        global federated_round_permitted
         federated_round_permitted = True
 
     else:
@@ -183,9 +184,9 @@ workspace.put(path, "join-round-request")
 subscriber = workspace.subscribe(path, listener)  # listen what the server has to say
 
 # 3 - Node waits 60 second, then if no parameters are written, it considers his request rejected by the server
-time.sleep(60)  # wait a minute a response, then unsubscribe the listener
+time.sleep(10)  # wait a minute a response, then unsubscribe the listener
 subscriber.close()
-print("Waited for 1 minute. Listener unsubscribed...")
+print("Waited for 10 seconds. Listener unsubscribed...")
 
 # 4 - if the server responded with the parameters, the training begin
 if federated_round_permitted:
@@ -198,6 +199,6 @@ if federated_round_permitted:
     download_and_train()
     # 6 - computed parameters are sent to the server for the aggregation
     input("Press enter to send parameters to the server")
-    send_parameters()
+    save_and_send_parameters()
 
 z.close()

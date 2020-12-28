@@ -14,7 +14,7 @@ import sys
 # import time
 import argparse
 import zenoh
-from zenoh import Zenoh
+from zenoh import Zenoh, Value
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -108,10 +108,10 @@ def federated_averaging():
     
 
 def send_parameters_to_path(path):
-    f = open('parameters.pt', 'rb')
+    f = open('global_parameters.pt', 'rb')
     binary = f.read()
     f.close()
-    value = zenoh.Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
+    value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
     print('Model saved - zenoh.Value created')
 
     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
@@ -137,7 +137,8 @@ def listener(change):
         federated_averaging()
         
     if change.value.encoding_descr() == 'text/plain':
-        if change.value == 'join-round-request':
+        print("String message arrived. Content: {}".format(change.value))
+        if change.value.get_content() == 'join-round-request':
             print(">> [Subscription listener] received a request to join a round.")
             print("Yes")
             send_parameters_to_path(change.path)
@@ -154,10 +155,10 @@ torch.save(global_model.state_dict(), 'global_parameters.pt')
 zenoh.init_logger()
 
 print("Opening session...")
-zenoh = Zenoh(conf)
+z = Zenoh(conf)
 
 print("New workspace...")
-workspace = zenoh.workspace()
+workspace = z.workspace()
 
 print("Subscribe to '{}'...".format(selector))
 sub = workspace.subscribe(selector, listener)
@@ -168,4 +169,4 @@ while c != 'q':
     c = sys.stdin.read(1)
 
 sub.close()
-zenoh.close()
+z.close()
