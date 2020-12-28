@@ -12,7 +12,7 @@
 
 # import json
 # import sys
-# import time
+import time
 import argparse
 import zenoh
 from zenoh import Zenoh, Value
@@ -72,7 +72,7 @@ print("Using path: {}".format(path))
 # initiate logging
 zenoh.init_logger()
 
-print("Openning session...")
+print("Opening session...")
 z = Zenoh(conf)
 
 print("New workspace...")
@@ -150,22 +150,54 @@ def send_parameters():
     value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
     print('Model saved - zenoh.Value created')
 
-    # --- send parameters with zenoh --- --- --- --- --- --- --- --- ---
+    # --- send parameters with zenoh --- --- --- --- --- --- --- ---
 
-    print("Put Data ('{}': '{}')...".format(path, value))
+    print("Put Data into {}".format(path))
     workspace.put(path, value)
 
 
-# --- init Federated Protocol --- --- --- --- --- --- --- ---
+# --- Listen for "messages" from the server --- --- --- --- --- ---
+def listener(change):
+    print(">> [Subscription listener] received {:?} for {} : {} with timestamp {}"
+          .format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(),
+                  change.timestamp))
+    if change.value.encoding_descr() == 'application/octet-stream':
+        f = open('global_parameters.pt', 'wb')
+        f.write(bytearray(change.value.get_content()))
+        f.close()
+        print(">> File saved")
+        federated_round_permitted = True
+
+    else:
+        print(">> Content: {}".format(change.value))
+
+# --- Federated Protocol --- --- --- --- --- --- --- --- --- ---
 
 
+# 1 - Node asks to join a federated round --- --- --- --- --- ---
+federated_round_permitted = False
+print("I have enough data to train a model. Let's ask to the server if I can get into a federated learning session!")
+workspace.put(path, "join-round-request")
 
-model = Classifier()
-criterion = nn.NLLLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.003)
-input("Press enter to train the model")
-download_and_train()
-input("Press enter to send parameters to the server")
-send_parameters()
+# 2 - Node waits a response from the server. If the server accepts the request, it will write the parameters in /federated/nodes/<node_id> --- ---
+subscriber = workspace.subscribe(path, listener)  # listen what the server has to say
+
+# 3 - Node waits 60 second, then if no parameters are written, it considers his request rejected by the server
+time.sleep(60)  # wait a minute a response, then unsubscribe the listener
+subscriber.close()
+print("Waited for 1 minute. Listener unsubscribed...")
+
+# 4 - if the server responded with the parameters, the training begin
+if federated_round_permitted:
+    # 5 - local training
+    model = Classifier()
+    criterion = nn.NLLLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.003)
+    model.load_state_dict(torch.load('global_parameters.pt'))
+    input("Press enter to train the model")
+    download_and_train()
+    # 6 - computed parameters are sent to the server for the aggregation
+    input("Press enter to send parameters to the server")
+    send_parameters()
 
 z.close()

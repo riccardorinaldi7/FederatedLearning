@@ -62,7 +62,7 @@ num_clients = 2
 trained_parameters = list()  # contains list of .pt filename
 
 
-# zenoh-net code  --- --- --- --- --- --- --- --- --- --- ---
+# -- function definitions  --- --- --- --- --- --- --- --- --- --- ---
 
 
 class Classifier(nn.Module):
@@ -85,9 +85,6 @@ class Classifier(nn.Module):
         return x
 
 
-global_model = Classifier()
-
-
 def federated_averaging():
     if len(trained_parameters) == num_clients:
         print(">> [Federated averaging] begin averaging between {} models".format(len(trained_parameters)))
@@ -105,9 +102,22 @@ def federated_averaging():
         global_model.load_state_dict(global_dict)
         # for model in client_models:
         #     model.load_state_dict(global_model.state_dict())
-        torch.save(global_model.state_dict(), 'global_model.pt')
+        torch.save(global_model.state_dict(), 'global_parameters.pt')
     else:
-        return
+        print(">> [Federated averaging] other {} trained models required".format(num_clients-len(trained_parameters)))
+    
+
+def send_parameters_to_path(path):
+    f = open('parameters.pt', 'rb')
+    binary = f.read()
+    f.close()
+    value = zenoh.Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
+    print('Model saved - zenoh.Value created')
+
+    # --- send parameters with zenoh --- --- --- --- --- --- --- ---
+
+    print("Put Data into {}".format(path))
+    workspace.put(path, value)
 
 
 def listener(change):
@@ -125,10 +135,20 @@ def listener(change):
             return
         trained_parameters.append(filename)
         federated_averaging()
+        
+    if change.value.encoding_descr() == 'text/plain':
+        if change.value == 'join-round-request':
+            print(">> [Subscription listener] received a request to join a round.")
+            print("Yes")
+            send_parameters_to_path(change.path)
+            print("Parameters sent")
 
     else:
         print(">> Content: {}".format(change.value))
 
+
+global_model = Classifier()
+torch.save(global_model.state_dict(), 'global_parameters.pt')
 
 # initiate logging
 zenoh.init_logger()
