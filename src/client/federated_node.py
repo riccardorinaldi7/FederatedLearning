@@ -181,7 +181,7 @@ print("I have enough data to train a model. Let's ask to the server if I can get
 workspace.put(path, "join-round-request")
 
 # 2 - Node waits a response from the server. If the server accepts the request, it will write the parameters in /federated/nodes/<node_id> --- ---
-subscriber = workspace.subscribe(path, listener)  # listen what the server has to say
+subscriber = workspace.subscribe('/federated/global', listener)  # listen what the server has to say
 
 # 3 - Node waits 60 second, then if no parameters are written, it considers his request rejected by the server
 time.sleep(10)  # wait a minute a response, then unsubscribe the listener

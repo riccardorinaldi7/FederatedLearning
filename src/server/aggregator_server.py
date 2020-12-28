@@ -112,11 +112,9 @@ def send_parameters_to_path(path):
     binary = f.read()
     f.close()
     value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
-    print('Model saved - zenoh.Value created')
+    # print('Model saved - zenoh.Value created')
 
     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
-
-    print("Put Data into {}".format(path))
     workspace.put(path, value)
 
 
@@ -129,23 +127,28 @@ def listener(change):
         f = open(filename, 'wb')
         f.write(bytearray(change.value.get_content()))
         f.close()
-        print(">> File saved")
+        print(">> [Subscription listener] Parameters file saved")
         if filename in trained_parameters:
             print(">> [Subscription listener] something gone wrong. Received twice from a client")
             return
         trained_parameters.append(filename)
         federated_averaging()
+        return
         
     if change.value.encoding_descr() == 'text/plain':
-        print("String message arrived. Content: {}".format(change.value))
+        # print("String message arrived. Content: {}".format(change.value))
         if change.value.get_content() == 'join-round-request':
             print(">> [Subscription listener] received a request to join a round.")
             print("Yes")
-            send_parameters_to_path(change.path)
-            print("Parameters sent")
+            send_parameters_to_path('/federated/global')
+            print("Parameters sent to /federated/global")
+        else:
+            print(">> [Subscription listener] Message content unknown")
+        return
 
     else:
         print(">> Content: {}".format(change.value))
+        return
 
 
 global_model = Classifier()
