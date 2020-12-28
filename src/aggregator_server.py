@@ -95,7 +95,7 @@ def federated_averaging():
         for filename in trained_parameters:
             model = Classifier()
             model.load_state_dict(torch.load(filename))
-            model.eval()
+            # model.eval() # not necessary if no inference must be processed
             client_models.append(model)
         print(">> [Federated averaging] {} model loaded".format(len(client_models)))
         # This will take simple mean of the weights of models #
