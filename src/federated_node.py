@@ -10,9 +10,9 @@
 # Contributors:
 #   ADLINK zenoh team, <zenoh@adlink-labs.tech>
 
-import json
-import sys
-import time
+# import json
+# import sys
+# import time
 import argparse
 import zenoh
 from zenoh import Zenoh, Value
@@ -146,7 +146,7 @@ def send_parameters():
     torch.save(model.state_dict(), 'parameters.pt')
     f = open('parameters.pt', 'rb')
     binary = f.read()
-    f.close
+    f.close()
     value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
     print('Model saved - zenoh.Value created')
 
@@ -157,6 +157,8 @@ def send_parameters():
 
 
 # --- init Federated Protocol --- --- --- --- --- --- --- ---
+
+
 
 model = Classifier()
 criterion = nn.NLLLoss()

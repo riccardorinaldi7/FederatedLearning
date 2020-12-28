@@ -114,7 +114,7 @@ def listener(change):
     print(">> [Subscription listener] received {:?} for {} : {} with timestamp {}"
           .format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(), change.timestamp))
     if change.value.encoding_descr() == 'application/octet-stream':
-        node_id = change.path.split('/')[-1]
+        node_id = change.path.split('/')[3]  # path = /federated/nodes/<node_id>
         filename = node_id + '.pt'
         f = open(filename, 'wb')
         f.write(bytearray(change.value.get_content()))
