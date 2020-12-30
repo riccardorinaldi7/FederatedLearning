@@ -64,7 +64,7 @@ path = args.path
 value = args.value
 
 # use UUID module to create a custom folder
-path = path + "/" + str(uuid.getnode())
+path = path + "/" + str(uuid.getnode())  # /federated/nodes/uuid
 print("Using path: {}".format(path))
 
 # --- zenoh-net code --- --- --- --- --- --- --- --- --- --- ---
@@ -147,17 +147,17 @@ def save_and_send_parameters():
     f = open('my_parameters.pt', 'rb')
     binary = f.read()
     f.close()
-    value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
+    file_value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
     print('Model saved - zenoh.Value created')
 
     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
 
-    print("Put Data into {}".format(path))
-    workspace.put(path, value)
+    print("Put Data into {}".format(path + '/local'))
+    workspace.put(path + '/local', file_value)
 
 
 # --- Listen for "messages" from the server --- --- --- --- --- ---
-def listener(change):
+def global_param_listener(change):
     print(">> [Subscription listener] received {:?} for {} : {} with timestamp {}"
           .format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(),
                   change.timestamp))
@@ -165,31 +165,33 @@ def listener(change):
         f = open('global_parameters.pt', 'wb')
         f.write(bytearray(change.value.get_content()))
         f.close()
-        print(">> File saved")
+        print(">> [Subscription listener] File saved")
         global federated_round_permitted
         federated_round_permitted = True
+        subscriber.close()
 
     else:
-        print(">> Content: {}".format(change.value))
+        print(">> Unexpected content: {}".format(change.value))
 
 # --- Federated Protocol --- --- --- --- --- --- --- --- --- ---
 
 
 # 1 - Node asks to join a federated round --- --- --- --- --- ---
 federated_round_permitted = False
-print("I have enough data to train a model. Let's ask to the server if I can get into a federated learning session!")
-workspace.put(path, "join-round-request")
+print("I have enough data to train a model")
+input("Press enter to send the request")
+workspace.put(path + '/messages', "join-round-request")
 
-# 2 - Node waits a response from the server. If the server accepts the request, it will write the parameters in /federated/nodes/<node_id> --- ---
-subscriber = workspace.subscribe('/federated/global', listener)  # listen what the server has to say
+# 2 - If the server accepts the request, it will write the parameters in /federated/nodes/<node_id>/global_params --- ---
+subscriber = workspace.subscribe(path + '/global_params', global_param_listener())  # /federated/nodes/<node_id>/global_params
 
-# 3 - Node waits 60 second, then if no parameters are written, it considers his request rejected by the server
-time.sleep(10)  # wait a minute a response, then unsubscribe the listener
+# 3 - Node waits 10 second, then if no parameters are written, it considers his request rejected by the server
+time.sleep(30)
 subscriber.close()
-print("Waited for 10 seconds. Listener unsubscribed...")
 
 # 4 - if the server responded with the parameters, the training begin
 if federated_round_permitted:
+    input("Parameters received. Press enter to load them into the model")
     # 5 - local training
     model = Classifier()
     criterion = nn.NLLLoss()
@@ -200,5 +202,10 @@ if federated_round_permitted:
     # 6 - computed parameters are sent to the server for the aggregation
     input("Press enter to send parameters to the server")
     save_and_send_parameters()
+
+# 4b - the request is rejected and the node won't cooperate in a federated learning session
+else:
+    print("Permission denied. Waited 10 seconds but no response arrived")
+    input("Press enter to terminate")
 
 z.close()

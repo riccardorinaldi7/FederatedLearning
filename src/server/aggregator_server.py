@@ -39,7 +39,7 @@ parser.add_argument('--listener', '-l', dest='listener',
                     type=str,
                     help='Locators to listen on.')
 parser.add_argument('--selector', '-s', dest='selector',
-                    default='/federated/nodes/**',
+                    default='/federated/nodes',
                     type=str,
                     help='The selection of resources to subscribe.')
 
@@ -60,6 +60,7 @@ num_clients = 2
 # batch_size = 32
 
 trained_parameters = list()  # contains list of .pt filename
+participants = list()
 
 
 # -- function definitions  --- --- --- --- --- --- --- --- --- --- ---
@@ -87,7 +88,7 @@ class Classifier(nn.Module):
 
 def federated_averaging():
     if len(trained_parameters) == num_clients:
-        print(">> [Federated averaging] begin averaging between {} models".format(len(trained_parameters)))
+        print(">> [Federated averaging] begin averaging between {} models".format(num_clients))
         client_models = list()
         for filename in trained_parameters:
             model = Classifier()
@@ -107,18 +108,7 @@ def federated_averaging():
         print(">> [Federated averaging] other {} trained models required".format(num_clients-len(trained_parameters)))
     
 
-def send_parameters_to_path(path):
-    f = open('global_parameters.pt', 'rb')
-    binary = f.read()
-    f.close()
-    value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
-    # print('Model saved - zenoh.Value created')
-
-    # --- send parameters with zenoh --- --- --- --- --- --- --- ---
-    workspace.put(path, value)
-
-
-def listener(change):
+def param_listener(change):
     print(">> [Subscription listener] received {:?} for {} : {} with timestamp {}"
           .format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(), change.timestamp))
     if change.value.encoding_descr() == 'application/octet-stream':
@@ -133,26 +123,51 @@ def listener(change):
             return
         trained_parameters.append(filename)
         federated_averaging()
-        return
-        
-    if change.value.encoding_descr() == 'text/plain':
-        # print("String message arrived. Content: {}".format(change.value))
-        if change.value.get_content() == 'join-round-request':
-            print(">> [Subscription listener] received a request to join a round.")
-            print("Yes")
-            send_parameters_to_path('/federated/global')
-            print("Parameters sent to /federated/global")
-        else:
-            print(">> [Subscription listener] Message content unknown")
-        return
 
     else:
         print(">> Content: {}".format(change.value))
-        return
+
+
+def send_parameters_to_all():
+    f = open('global_parameters.pt', 'rb')
+    binary = f.read()
+    f.close()
+    value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
+    # print('Model saved - zenoh.Value created')
+
+    # --- send parameters with zenoh --- --- --- --- --- --- --- ---
+    for node_id in participants:
+        global_node_path = selector + node_id + '/global_params'
+        workspace.put(global_node_path, value)  # /federated/nodes/<node_id>/global_params
+        print(">> [Global params sender] global_params sent to {}".format(global_node_path))
+    global param_subscriber
+
+    # every node is logged in, let's wait for the updated_parameters
+    print(" [Global params sender] subscribe to '{}'...".format(selector + '/*/local'))
+    param_subscriber = workspace.subscribe(selector + '/*/local', param_listener)
+
+
+def message_listener(change):
+    print(">> [Message listener] received {:?} for {} : {} with timestamp {}".format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(), change.timestamp))
+
+    if change.value.encoding_descr() == 'text/plain':
+        # 2 - If accepted, the global parameters are sent to the nodes
+        if change.value.get_content() == 'join-round-request':
+            node_id = change.path.split('/')[3]
+            print(">> [Message listener] received a request to join a round by {}.".format(node_id))
+            participants.append(node_id)
+            if len(participants) == num_clients:
+                send_parameters_to_all()           # all the clients are in, send global params to everyone
+        else:
+            print(">> [Message listener] Message content unknown")
+
+    else:
+        print(">> [Message Listener] Unexpected content: {}".format(change.value))
 
 
 global_model = Classifier()
 torch.save(global_model.state_dict(), 'global_parameters.pt')
+global param_subscriber
 
 # initiate logging
 zenoh.init_logger()
@@ -163,13 +178,14 @@ z = Zenoh(conf)
 print("New workspace...")
 workspace = z.workspace()
 
-print("Subscribe to '{}'...".format(selector))
-sub = workspace.subscribe(selector, listener)
+# 1 - Listen for messages to begin a federated round
+msg_selector = selector + '/*/messages'
+print("Subscribe to '{}'...".format(msg_selector))
+msg_subscriber = workspace.subscribe(msg_selector, message_listener)
 
 print("Press q to stop...")
 c = '\0'
 while c != 'q':
     c = sys.stdin.read(1)
 
-sub.close()
 z.close()
