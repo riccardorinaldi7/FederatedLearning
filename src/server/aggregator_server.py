@@ -171,6 +171,8 @@ def message_listener(change):
             if len(participants) == num_clients:
                 msg_subscriber.close()      # other requests are not listened
                 send_parameters_to_all()           # all the clients are in, send global params to everyone
+            else:
+                print(">> [Message listener] {} nodes missing".format(num_clients-len(participants)))
         else:
             print(">> [Message listener] Message content unknown")
 
