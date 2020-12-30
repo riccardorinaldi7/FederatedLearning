@@ -18,6 +18,7 @@ from zenoh import Zenoh, Value
 import torch
 import torch.nn.functional as F
 from torch import nn
+import os
 
 # --- Command line argument parsing --- --- --- --- --- ---
 parser = argparse.ArgumentParser(
@@ -86,6 +87,16 @@ class Classifier(nn.Module):
         return x
 
 
+def clean_protocol():
+    participants.clear()
+    trained_parameters.clear()
+    global msg_selector
+    msg_selector = selector + '/*/messages'
+    print("Subscribe to '{}'...".format(msg_selector))
+    global  msg_subscriber
+    msg_subscriber = workspace.subscribe(msg_selector, message_listener)
+
+
 def federated_averaging():
     if len(trained_parameters) == num_clients:
         print(">> [Federated averaging] begin averaging between {} models".format(num_clients))
@@ -104,6 +115,7 @@ def federated_averaging():
         # for model in client_models:
         #     model.load_state_dict(global_model.state_dict())
         torch.save(global_model.state_dict(), 'global_parameters.pt')
+        clean_protocol()
     else:
         print(">> [Federated averaging] other {} trained models required".format(num_clients-len(trained_parameters)))
     
@@ -157,6 +169,7 @@ def message_listener(change):
             print(">> [Message listener] received a request to join a round by {}.".format(node_id))
             participants.append(node_id)
             if len(participants) == num_clients:
+                msg_subscriber.close()      # other requests are not listened
                 send_parameters_to_all()           # all the clients are in, send global params to everyone
         else:
             print(">> [Message listener] Message content unknown")
@@ -165,8 +178,18 @@ def message_listener(change):
         print(">> [Message Listener] Unexpected content: {}".format(change.value))
 
 
-global_model = Classifier()
-torch.save(global_model.state_dict(), 'global_parameters.pt')
+#  At server startup create a base global_params file as long as another file exists. In that case, the user decide what to do
+if os.path.isfile("global_parameters.pt"):
+    print("A global_parameters file already exists. Overwrite the file?(y,n)\n This action can overwrite a smarter model if the server has been stopped.")
+    c = '\0'
+    while c != 'y' or c != 'n':
+        if c == 'y':
+            global_model = Classifier()
+            torch.save(global_model.state_dict(),
+                       'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
+        else:
+            break
+
 global param_subscriber
 
 # initiate logging
