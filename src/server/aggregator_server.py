@@ -134,7 +134,7 @@ def federated_averaging():
 
 def local_param_listener(change):
     print(">> [Subscription listener] received {} on {} with timestamp {}"
-          .format(change.value.encoding_descr, change.path, change.timestamp))
+          .format(change.value.encoding_descr(), change.path, change.timestamp))
     if change.value.encoding_descr() == 'application/octet-stream':
         node_id = change.path.split('/')[3]  # path = /federated/nodes/<node_id>
         filename = node_id + '.pt'
@@ -166,7 +166,7 @@ def send_parameters_to_all():
         print(">> [Global params sender] global_params sent to {}".format(global_node_path))
 
     # every node is logged in, let's wait for the updated_parameters
-    print("[Global params sender] subscribe to '{}'...".format(selector + '/*/local'))
+    print(">> [Global params sender] subscribe to '{}'...".format(selector + '/*/local'))
     workspace.subscribe(selector + '/*/local', local_param_listener)
 
 
