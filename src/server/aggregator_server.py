@@ -127,12 +127,12 @@ def federated_averaging():
         # global_model.load_state_dict(global_dict)
         save_and_put_global_parameters(dictionary=global_dict)
 
-        clean_protocol()
+        clean_protocol()  # keep ready for another round
     else:
         print(">> [Federated averaging] other {} trained models required".format(num_clients-len(trained_parameters)))
     
 
-def param_listener(change):
+def local_param_listener(change):
     print(">> [Subscription listener] received {} on {} with timestamp {}"
           .format(change.value.encoding_descr, change.path, change.timestamp))
     if change.value.encoding_descr() == 'application/octet-stream':
@@ -164,11 +164,10 @@ def send_parameters_to_all():
         global_node_path = selector + '/' + node_id + '/global_params'
         workspace.put(global_node_path, value)  # /federated/nodes/<node_id>/global_params
         print(">> [Global params sender] global_params sent to {}".format(global_node_path))
-    global param_subscriber
 
     # every node is logged in, let's wait for the updated_parameters
     print("[Global params sender] subscribe to '{}'...".format(selector + '/*/local'))
-    param_subscriber = workspace.subscribe(selector + '/*/local', param_listener)
+    workspace.subscribe(selector + '/*/local', local_param_listener)
 
 
 # -- LISTEN ON /federated/nodes/*/messages PATH-- -- -- -- -- -- -- -- -- -- -- --
@@ -204,7 +203,6 @@ if os.path.isfile("global_parameters.pt"):
 else:
     global_model = Classifier()
     torch.save(global_model.state_dict(), 'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
-global param_subscriber
 
 # initiate logging
 zenoh.init_logger()
