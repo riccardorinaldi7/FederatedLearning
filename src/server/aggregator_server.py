@@ -61,7 +61,7 @@ num_clients = 2
 # batch_size = 32
 
 trained_parameters = list()  # contains list of .pt filename
-participants = list()
+participants = list()  # contains uuid of the participant nodes
 
 
 # -- function definitions  --- --- --- --- --- --- --- --- --- --- ---
@@ -93,7 +93,7 @@ def clean_protocol():
     global msg_selector
     msg_selector = selector + '/*/messages'
     print("Subscribe to '{}'...".format(msg_selector))
-    global  msg_subscriber
+    global msg_subscriber
     msg_subscriber = workspace.subscribe(msg_selector, message_listener)
 
 
@@ -121,8 +121,8 @@ def federated_averaging():
     
 
 def param_listener(change):
-    print(">> [Subscription listener] received {:?} for {} : {} with timestamp {}"
-          .format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(), change.timestamp))
+    print(">> [Subscription listener] received {} on {} with timestamp {}"
+          .format(change.value.encoding_descr, change.path, change.timestamp))
     if change.value.encoding_descr() == 'application/octet-stream':
         node_id = change.path.split('/')[3]  # path = /federated/nodes/<node_id>
         filename = node_id + '.pt'
@@ -160,7 +160,7 @@ def send_parameters_to_all():
 
 
 def message_listener(change):
-    print(">> [Message listener] received {:?} for {} : {} with timestamp {}".format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(), change.timestamp))
+    print(">> [Message listener] received {} on {} : {} with timestamp {}".format(change.value.encoding_descr, change.path, '' if change.value is None else change.value, change.timestamp))
 
     if change.value.encoding_descr() == 'text/plain':
         # 2 - If accepted, the global parameters are sent to the nodes
@@ -183,15 +183,18 @@ def message_listener(change):
 #  At server startup create a base global_params file as long as another file exists. In that case, the user decide what to do
 if os.path.isfile("global_parameters.pt"):
     print("A global_parameters file already exists. Overwrite the file?(y,n)\n This action can overwrite a smarter model if the server has been stopped.")
-    c = '\0'
-    while c != 'y' or c != 'n':
-        if c == 'y':
+    c1 = '\0'
+    while c1 != 'y' or c1 != 'n':
+        if c1 == 'y':
             global_model = Classifier()
             torch.save(global_model.state_dict(),
                        'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
         else:
             break
-
+else:
+    global_model = Classifier()
+    torch.save(global_model.state_dict(),
+               'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 global param_subscriber
 
 # initiate logging

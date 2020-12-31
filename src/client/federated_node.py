@@ -183,7 +183,7 @@ input("Press enter to send the request")
 workspace.put(path + '/messages', "join-round-request")
 
 # 2 - If the server accepts the request, it will write the parameters in /federated/nodes/<node_id>/global_params --- ---
-subscriber = workspace.subscribe(path + '/global_params', global_param_listener())  # /federated/nodes/<node_id>/global_params
+subscriber = workspace.subscribe(path + '/global_params', global_param_listener)  # /federated/nodes/<node_id>/global_params
 
 # 3 - Node waits 10 second, then if no parameters are written, it considers his request rejected by the server
 time.sleep(30)
