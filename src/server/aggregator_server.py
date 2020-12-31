@@ -166,8 +166,9 @@ def send_parameters_to_all():
         print(">> [Global params sender] global_params sent to {}".format(global_node_path))
 
     # every node is logged in, let's wait for the updated_parameters
-    print(">> [Global params sender] subscribe to '{}'...".format(selector + '/*/local'))
-    workspace.subscribe(selector + '/*/local', local_param_listener)
+    local_params_selector = selector + '/*/local'
+    local_sub = workspace.subscribe(local_params_selector, local_param_listener)
+    print(">> [Global params sender] subscribed to '{}'...".format(local_params_selector))
 
 
 # -- LISTEN ON /federated/nodes/*/messages PATH-- -- -- -- -- -- -- -- -- -- -- --
@@ -215,7 +216,7 @@ workspace = z.workspace()
 
 # 1 - Listen for messages
 msg_selector = selector + '/*/messages'
-print("Subscribe to '{}'...".format(msg_selector))
+print("Subscribed to '{}'...".format(msg_selector))
 msg_subscriber = workspace.subscribe(msg_selector, message_listener)
 
 print("Press q to stop...")
