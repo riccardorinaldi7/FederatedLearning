@@ -182,15 +182,11 @@ def message_listener(change):
 
 #  At server startup create a base global_params file as long as another file exists. In that case, the user decide what to do
 if os.path.isfile("global_parameters.pt"):
-    print("A global_parameters file already exists. Overwrite the file?(y,n)\n This action can overwrite a smarter model if the server has been stopped.")
-    c1 = '\0'
-    while c1 != 'y' or c1 != 'n':
-        if c1 == 'y':
-            global_model = Classifier()
-            torch.save(global_model.state_dict(),
-                       'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
-        else:
-            break
+    res = input("A global_parameters file already exists. Overwrite the file? (y,N)\n This action can overwrite a smarter model if the server has been stopped.")
+    if res[0] == 'y':
+        global_model = Classifier()
+        torch.save(global_model.state_dict(),
+                   'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 else:
     global_model = Classifier()
     torch.save(global_model.state_dict(),
