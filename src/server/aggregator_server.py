@@ -87,14 +87,25 @@ class Classifier(nn.Module):
         return x
 
 
+# -- SAVE AND PUT THE MODEL ON /federated/global/parameters
+def save_and_put_global_parameters(dictionary):
+    torch.save(dictionary, 'global_parameters.pt')
+    print('>> [Save and Put] global_parameters.pt saved')
+
+    f = open('global_parameters.pt', 'rb')
+    binary = f.read()
+    f.close()
+    file_value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
+
+    # --- send parameters with zenoh --- --- --- --- --- --- --- ---
+    global_parameters_path = '/federated/global/parameters'
+    print("Put global parameters into {}".format(global_parameters_path))
+    workspace.put(global_parameters_path, file_value)
+
+
 def clean_protocol():
     participants.clear()
     trained_parameters.clear()
-    global msg_selector
-    msg_selector = selector + '/*/messages'
-    print("Subscribe to '{}'...".format(msg_selector))
-    global msg_subscriber
-    msg_subscriber = workspace.subscribe(msg_selector, message_listener)
 
 
 def federated_averaging():
@@ -107,14 +118,15 @@ def federated_averaging():
             # model.eval() # not necessary if no inference must be processed
             client_models.append(model)
         print(">> [Federated averaging] {} model loaded".format(len(client_models)))
-        # This will take simple mean of the weights of models #
+
+        # This will take simple mean of the weights of models. Code from towardsdatascience.com
         global_dict = global_model.state_dict()
         for k in global_dict.keys():
             global_dict[k] = torch.stack([client_models[i].state_dict()[k].float() for i in range(len(client_models))], 0).mean(0)
-        global_model.load_state_dict(global_dict)
-        # for model in client_models:
-        #     model.load_state_dict(global_model.state_dict())
-        torch.save(global_model.state_dict(), 'global_parameters.pt')
+
+        # global_model.load_state_dict(global_dict)
+        save_and_put_global_parameters(dictionary=global_dict)
+
         clean_protocol()
     else:
         print(">> [Federated averaging] other {} trained models required".format(num_clients-len(trained_parameters)))
@@ -145,52 +157,53 @@ def send_parameters_to_all():
     binary = f.read()
     f.close()
     value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
-    # print('Model saved - zenoh.Value created')
+    # print('Parameters file loaded - zenoh.Value created and ready to be sent')
 
     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
     for node_id in participants:
-        global_node_path = selector + node_id + '/global_params'
+        global_node_path = selector + '/' + node_id + '/global_params'
         workspace.put(global_node_path, value)  # /federated/nodes/<node_id>/global_params
         print(">> [Global params sender] global_params sent to {}".format(global_node_path))
     global param_subscriber
 
     # every node is logged in, let's wait for the updated_parameters
-    print(" [Global params sender] subscribe to '{}'...".format(selector + '/*/local'))
+    print("[Global params sender] subscribe to '{}'...".format(selector + '/*/local'))
     param_subscriber = workspace.subscribe(selector + '/*/local', param_listener)
 
 
+# -- LISTEN ON /federated/nodes/*/messages PATH-- -- -- -- -- -- -- -- -- -- -- --
 def message_listener(change):
-    print(">> [Message listener] received {} on {} : {} with timestamp {}".format(change.value.encoding_descr, change.path, '' if change.value is None else change.value, change.timestamp))
-
+    print(">> [Message listener] received {} on {} : {}".format(change.value.encoding_descr(), change.path, '' if change.value is None else change.value.get_content()))
+    node_id = change.path.split('/')[3]  # sender's id
     if change.value.encoding_descr() == 'text/plain':
-        # 2 - If accepted, the global parameters are sent to the nodes
+
+        # 2 - Request to join a federated session
         if change.value.get_content() == 'join-round-request':
-            node_id = change.path.split('/')[3]
+            # TODO: check whether accept the request or not
             print(">> [Message listener] received a request to join a round by {}.".format(node_id))
             participants.append(node_id)
             if len(participants) == num_clients:
-                msg_subscriber.close()      # other requests are not listened
                 send_parameters_to_all()           # all the clients are in, send global params to everyone
             else:
-                print(">> [Message listener] {} nodes missing".format(num_clients-len(participants)))
+                print(">> [Message listener] {} participants missing".format(num_clients-len(participants)))
+
+        # --- Message unknown --- --- --- --- --- --- --- --- --- --- --- ---
         else:
             print(">> [Message listener] Message content unknown")
 
     else:
-        print(">> [Message Listener] Unexpected content: {}".format(change.value))
+        print(">> [Message Listener] The message from {} is not a string".format(node_id))
 
 
 #  At server startup create a base global_params file as long as another file exists. In that case, the user decide what to do
 if os.path.isfile("global_parameters.pt"):
-    res = input("A global_parameters file already exists. Overwrite the file? (y,N)\n This action can overwrite a smarter model if the server has been stopped.")
+    res = input("A global_parameters file already exists. Overwrite the file?\nThis action can overwrite a smarter model. (y/N) ")
     if res[0] == 'y':
         global_model = Classifier()
-        torch.save(global_model.state_dict(),
-                   'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
+        torch.save(global_model.state_dict(), 'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 else:
     global_model = Classifier()
-    torch.save(global_model.state_dict(),
-               'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
+    torch.save(global_model.state_dict(), 'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 global param_subscriber
 
 # initiate logging
@@ -202,7 +215,7 @@ z = Zenoh(conf)
 print("New workspace...")
 workspace = z.workspace()
 
-# 1 - Listen for messages to begin a federated round
+# 1 - Listen for messages
 msg_selector = selector + '/*/messages'
 print("Subscribe to '{}'...".format(msg_selector))
 msg_subscriber = workspace.subscribe(msg_selector, message_listener)

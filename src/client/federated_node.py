@@ -158,17 +158,15 @@ def save_and_send_parameters():
 
 # --- Listen for "messages" from the server --- --- --- --- --- ---
 def global_param_listener(change):
-    print(">> [Subscription listener] received {:?} for {} : {} with timestamp {}"
-          .format(change.kind, change.path, '' if change.value is None else change.value.encoding_descr(),
-                  change.timestamp))
+    print(">> [Subscription listener] received {} on {}: binary content".format(change.value.encoding_descr(), change.path))
     if change.value.encoding_descr() == 'application/octet-stream':
         f = open('global_parameters.pt', 'wb')
         f.write(bytearray(change.value.get_content()))
         f.close()
-        print(">> [Subscription listener] File saved")
+        print(">> [Subscription listener] global_parameters.pt saved")
         global federated_round_permitted
         federated_round_permitted = True
-        subscriber.close()
+        # subscriber.close()
 
     else:
         print(">> Unexpected content: {}".format(change.value))
@@ -186,7 +184,7 @@ workspace.put(path + '/messages', "join-round-request")
 subscriber = workspace.subscribe(path + '/global_params', global_param_listener)  # /federated/nodes/<node_id>/global_params
 
 # 3 - Node waits 10 second, then if no parameters are written, it considers his request rejected by the server
-time.sleep(30)
+time.sleep(60)
 subscriber.close()
 
 # 4 - if the server responded with the parameters, the training begin
