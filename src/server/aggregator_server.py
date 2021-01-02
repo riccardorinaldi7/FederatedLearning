@@ -25,11 +25,12 @@ parser = argparse.ArgumentParser(
     prog='z_sub',
     description='zenoh sub example')
 parser.add_argument('--mode', '-m', dest='mode',
-                    default='peer',
+                    default='client',
                     choices=['peer', 'client'],
                     type=str,
                     help='The zenoh session mode.')
 parser.add_argument('--peer', '-e', dest='peer',
+                    default='tcp/192.168.56.101:7447',
                     metavar='LOCATOR',
                     action='append',
                     type=str,
@@ -179,7 +180,7 @@ def message_listener(change):
 
         # 2 - Request to join a federated session
         if change.value.get_content() == 'join-round-request':
-            # TODO: check whether accept the request or not
+            # check here whether accept the request or not
             print(">> [Message listener] received a request to join a round by {}.".format(node_id))
             participants.append(node_id)
             if len(participants) == num_clients:
