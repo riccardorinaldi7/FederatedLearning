@@ -188,6 +188,7 @@ def send_parameters_to_all():
 # -- LISTEN ON /federated/nodes/*/messages PATH-- -- -- -- -- -- -- -- -- -- -- --
 def message_listener(change):
     print(">> [Message listener] received {} on {} : {}".format(change.value.encoding_descr(), change.path, '' if change.value is None else change.value.get_content()))
+    global federated_round_in_progress
     node_id = change.path.split('/')[3]  # sender's id
     if change.value.encoding_descr() == 'text/plain':
 
@@ -196,14 +197,12 @@ def message_listener(change):
             # check here whether accept the request or not
             print(">> [Message listener] received a request to join a round by {}.".format(node_id))
 
-            global federated_round_in_progress
             if federated_round_in_progress:
                 print(">> [Message listener] Request rejected: a federated round is already running")
                 return
 
             participants.append(node_id)
             if len(participants) == num_clients:
-                global federated_round_in_progress
                 federated_round_in_progress = True
                 send_parameters_to_all()           # all the clients are in, send global params to everyone
             else:
@@ -220,7 +219,7 @@ def message_listener(change):
 #  At server startup create a base global_params file as long as another file exists. In that case, the user decide what to do
 if os.path.isfile("global_parameters.pt"):
     res = input("A global_parameters file already exists. Overwrite the file?\nThis action can overwrite a smarter model. (y/N) ")
-    if res[0] == 'y':
+    if len(res) > 0 and res[0] == 'y':
         global_model = Classifier()
         torch.save(global_model.state_dict(), 'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 else:
