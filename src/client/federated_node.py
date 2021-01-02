@@ -148,13 +148,13 @@ def save_and_send_parameters():
     f = open('my_parameters.pt', 'rb')
     binary = f.read()
     f.close()
-    file_value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
+    file_value = zenoh.Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
     print('Model saved - zenoh.Value created')
 
     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
-
-    print("Put Data into {}".format(path + '/local'))
-    workspace.put(path + '/local', file_value)
+    local_path = path + '/local'
+    print("Put Data into {}".format(local_path))
+    workspace.put(local_path, file_value)
 
 
 # --- Listen for "messages" from the server --- --- --- --- --- ---
@@ -185,7 +185,7 @@ workspace.put(path + '/messages', "join-round-request")
 subscriber = workspace.subscribe(path + '/global_params', global_param_listener)  # /federated/nodes/<node_id>/global_params
 
 # 3 - Node waits 10 second, then if no parameters are written, it considers his request rejected by the server
-time.sleep(60)
+time.sleep(30)
 subscriber.close()
 
 # 4 - if the server responded with the parameters, the training begin

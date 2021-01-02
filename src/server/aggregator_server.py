@@ -25,12 +25,11 @@ parser = argparse.ArgumentParser(
     prog='z_sub',
     description='zenoh sub example')
 parser.add_argument('--mode', '-m', dest='mode',
-                    default='client',
+                    default='peer',
                     choices=['peer', 'client'],
                     type=str,
                     help='The zenoh session mode.')
 parser.add_argument('--peer', '-e', dest='peer',
-                    default='tcp/192.168.56.101:7447',
                     metavar='LOCATOR',
                     action='append',
                     type=str,
@@ -63,6 +62,7 @@ num_clients = 2
 
 trained_parameters = list()  # contains list of .pt filename
 participants = list()  # contains uuid of the participant nodes
+# federated_round_in_progress = False
 
 
 # -- function definitions  --- --- --- --- --- --- --- --- --- --- ---
@@ -107,6 +107,7 @@ def save_and_put_global_parameters(dictionary):
 def clean_protocol():
     participants.clear()
     trained_parameters.clear()
+    # set federated_round_in_progress = False
 
 
 def federated_averaging():
@@ -153,7 +154,13 @@ def local_param_listener(change):
         print(">> Content: {}".format(change.value))
 
 
+def simple_listener(change):
+    print("Hey! Something happened at {}".format(change.path))
+
+
 def send_parameters_to_all():
+    global workspace
+
     f = open('global_parameters.pt', 'rb')
     binary = f.read()
     f.close()
@@ -167,9 +174,9 @@ def send_parameters_to_all():
         print(">> [Global params sender] global_params sent to {}".format(global_node_path))
 
     # every node is logged in, let's wait for the updated_parameters
-    local_params_selector = selector + '/*/local'
-    local_sub = workspace.subscribe(local_params_selector, local_param_listener)
-    print(">> [Global params sender] subscribed to '{}'...".format(local_params_selector))
+    # local_params_selector = selector + '/*/local'
+    # local_sub = workspace.subscribe('/federated/test', simple_listener)
+    # print(">> [Global params sender] subscribed to '{}'...".format(local_params_selector))
 
 
 # -- LISTEN ON /federated/nodes/*/messages PATH-- -- -- -- -- -- -- -- -- -- -- --
@@ -184,6 +191,7 @@ def message_listener(change):
             print(">> [Message listener] received a request to join a round by {}.".format(node_id))
             participants.append(node_id)
             if len(participants) == num_clients:
+                # set federated_round_in_progress = True
                 send_parameters_to_all()           # all the clients are in, send global params to everyone
             else:
                 print(">> [Message listener] {} participants missing".format(num_clients-len(participants)))
@@ -215,10 +223,16 @@ z = Zenoh(conf)
 print("New workspace...")
 workspace = z.workspace()
 
+
 # 1 - Listen for messages
 msg_selector = selector + '/*/messages'
 print("Subscribed to '{}'...".format(msg_selector))
 msg_subscriber = workspace.subscribe(msg_selector, message_listener)
+
+# n - Listen for pt file from nodes
+local_params_selector = selector + '/*/local'
+local_sub = workspace.subscribe(local_params_selector, local_param_listener)
+print(">> [Global params sender] subscribed to '{}'...".format(local_params_selector))
 
 print("Press q to stop...")
 c = '\0'
