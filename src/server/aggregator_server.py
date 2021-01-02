@@ -144,6 +144,11 @@ def local_param_listener(change):
 
     if change.value.encoding_descr() == 'application/octet-stream':
         node_id = change.path.split('/')[3]  # path = /federated/nodes/<node_id>
+
+        if node_id not in participants:
+            print(">> [Local param listener] node not in this round: parameters discarded")
+            return
+
         filename = node_id + '.pt'
         f = open(filename, 'wb')
         f.write(bytearray(change.value.get_content()))
