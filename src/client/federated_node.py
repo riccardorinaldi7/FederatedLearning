@@ -211,6 +211,7 @@ if federated_round_permitted:
     local_path = path + '/local'
     print("Put Data into {}".format(local_path))
     workspace.put(local_path, file_value)
+    print("Done")
 
 # 4b - the request is rejected and the node won't cooperate in a federated learning session
 else:
