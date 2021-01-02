@@ -21,6 +21,7 @@ from torchvision import datasets, transforms
 from torch import nn, optim
 import torch.nn.functional as F
 import uuid
+import random
 
 # import helper
 
@@ -64,7 +65,8 @@ path = args.path
 value = args.value
 
 # use UUID module to create a custom folder
-path = path + "/" + str(uuid.getnode())  # /federated/nodes/uuid
+# ADDED RANDOM INT FOR LOCAL USAGE
+path = path + "/" + str(uuid.getnode()) + str(random.randint(1, 100))  # /federated/nodes/uuid
 print("Using path: {}".format(path))
 
 # --- zenoh-net code --- --- --- --- --- --- --- --- --- --- ---
