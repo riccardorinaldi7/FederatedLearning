@@ -62,7 +62,7 @@ num_clients = 2
 
 trained_parameters = list()  # contains list of .pt filename
 participants = list()  # contains uuid of the participant nodes
-# federated_round_in_progress = False
+federated_round_in_progress = False
 
 
 # -- function definitions  --- --- --- --- --- --- --- --- --- --- ---
@@ -107,7 +107,9 @@ def save_and_put_global_parameters(dictionary):
 def clean_protocol():
     participants.clear()
     trained_parameters.clear()
-    # set federated_round_in_progress = False
+    global federated_round_in_progress
+    federated_round_in_progress = False
+    print("Ready for another round...")
 
 
 def federated_averaging():
@@ -135,25 +137,29 @@ def federated_averaging():
     
 
 def local_param_listener(change):
-    print(">> [Subscription listener] received {} on {} with timestamp {}"
-          .format(change.value.encoding_descr(), change.path, change.timestamp))
+    print(">> [Local param listener] received local parameter")
+    global federated_round_in_progress
+    if not federated_round_in_progress:
+        print(">> [Local param listener] no round in progress")
+
     if change.value.encoding_descr() == 'application/octet-stream':
         node_id = change.path.split('/')[3]  # path = /federated/nodes/<node_id>
         filename = node_id + '.pt'
         f = open(filename, 'wb')
         f.write(bytearray(change.value.get_content()))
         f.close()
-        print(">> [Subscription listener] Parameters file saved")
+        print(">> [Local param listener] Parameters file saved")
         if filename in trained_parameters:
-            print(">> [Subscription listener] something gone wrong. Received twice from a client")
+            print(">> [Local param listener] something gone wrong. Received twice from a client")
             return
         trained_parameters.append(filename)
         federated_averaging()
 
     else:
-        print(">> Content: {}".format(change.value))
+        print(">> [Local param listener] Not a parameter file. Content: {}".format(change.value))
 
 
+# for debug purposes
 def simple_listener(change):
     print("Hey! Something happened at {}".format(change.path))
 
@@ -189,9 +195,16 @@ def message_listener(change):
         if change.value.get_content() == 'join-round-request':
             # check here whether accept the request or not
             print(">> [Message listener] received a request to join a round by {}.".format(node_id))
+
+            global federated_round_in_progress
+            if federated_round_in_progress:
+                print(">> [Message listener] Request rejected: a federated round is already running")
+                return
+
             participants.append(node_id)
             if len(participants) == num_clients:
-                # set federated_round_in_progress = True
+                global federated_round_in_progress
+                federated_round_in_progress = True
                 send_parameters_to_all()           # all the clients are in, send global params to everyone
             else:
                 print(">> [Message listener] {} participants missing".format(num_clients-len(participants)))
@@ -232,7 +245,7 @@ msg_subscriber = workspace.subscribe(msg_selector, message_listener)
 # n - Listen for pt file from nodes
 local_params_selector = selector + '/*/local'
 local_sub = workspace.subscribe(local_params_selector, local_param_listener)
-print(">> [Global params sender] subscribed to '{}'...".format(local_params_selector))
+print("subscribed to '{}'...".format(local_params_selector))
 
 print("Press q to stop...")
 c = '\0'

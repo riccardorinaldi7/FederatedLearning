@@ -142,31 +142,30 @@ def download_and_train():
 
 
 # --- save the parameters and wrap them into a zenoh.Value --- ---
-def save_and_send_parameters():
-    torch.save(model.state_dict(), 'my_parameters.pt')
-    f = open('my_parameters.pt', 'rb')
-    binary = f.read()
-    f.close()
-    file_value = zenoh.Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
-    print('Model saved - zenoh.Value created')
-
-    # --- send parameters with zenoh --- --- --- --- --- --- --- ---
-    local_path = path + '/local'
-    print("Put Data into {}".format(local_path))
-    workspace.put(local_path, file_value)
+# def save_and_send_parameters():
+#     torch.save(model.state_dict(), 'my_parameters.pt')
+#     f = open('my_parameters.pt', 'rb')
+#     binary = f.read()
+#     f.close()
+#     file_value = zenoh.Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
+#     print('Model saved - zenoh.Value created')
+#
+#     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
+#     local_path = path + '/local'
+#     print("Put Data into {}".format(local_path))
+#     workspace.put(local_path, file_value)
 
 
 # --- Listen for "messages" from the server --- --- --- --- --- ---
 def global_param_listener(change):
     print(">> [Subscription listener] received {} on {}: binary content".format(change.value.encoding_descr(), change.path))
     if change.value.encoding_descr() == 'application/octet-stream':
-        f = open('global_parameters.pt', 'wb')
-        f.write(bytearray(change.value.get_content()))
-        f.close()
+        gp_file = open('global_parameters.pt', 'wb')
+        gp_file.write(bytearray(change.value.get_content()))
+        gp_file.close()
         print(">> [Subscription listener] global_parameters.pt saved")
         global federated_round_permitted
         federated_round_permitted = True
-        # subscriber.close()
 
     else:
         print(">> Unexpected content: {}".format(change.value))
@@ -196,10 +195,9 @@ if federated_round_permitted:
     optimizer = optim.Adam(model.parameters(), lr=0.003)
     model.load_state_dict(torch.load('global_parameters.pt'))
     input("Press enter to train the model")
-    # download_and_train()
+    download_and_train()
     # 6 - computed parameters are sent to the server for the aggregation
     input("Press enter to send parameters to the server")
-    # save_and_send_parameters()
     torch.save(model.state_dict(), 'my_parameters.pt')
     f = open('my_parameters.pt', 'rb')
     binary = f.read()
