@@ -199,7 +199,18 @@ if federated_round_permitted:
     # download_and_train()
     # 6 - computed parameters are sent to the server for the aggregation
     input("Press enter to send parameters to the server")
-    save_and_send_parameters()
+    # save_and_send_parameters()
+    torch.save(model.state_dict(), 'my_parameters.pt')
+    f = open('my_parameters.pt', 'rb')
+    binary = f.read()
+    f.close()
+    file_value = zenoh.Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
+    print('Model saved - zenoh.Value created')
+
+    # --- send parameters with zenoh --- --- --- --- --- --- --- ---
+    local_path = path + '/local'
+    print("Put Data into {}".format(local_path))
+    workspace.put(local_path, file_value)
 
 # 4b - the request is rejected and the node won't cooperate in a federated learning session
 else:
