@@ -31,12 +31,11 @@ parser = argparse.ArgumentParser(
     prog='z_put',
     description='zenoh put example')
 parser.add_argument('--mode', '-m', dest='mode',
-                    default='client',
+                    default='peer',
                     choices=['peer', 'client'],
                     type=str,
                     help='The zenoh session mode.')
 parser.add_argument('--peer', '-e', dest='peer',
-                    default='tcp/192.168.56.101:7447',
                     metavar='LOCATOR',
                     action='append',
                     type=str,
@@ -197,7 +196,7 @@ if federated_round_permitted:
     optimizer = optim.Adam(model.parameters(), lr=0.003)
     model.load_state_dict(torch.load('global_parameters.pt'))
     input("Press enter to train the model")
-    download_and_train()
+    # download_and_train()
     # 6 - computed parameters are sent to the server for the aggregation
     input("Press enter to send parameters to the server")
     save_and_send_parameters()
