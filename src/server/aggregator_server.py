@@ -11,7 +11,7 @@
 #   ADLINK zenoh team, <zenoh@adlink-labs.tech>
 
 import sys
-# import time
+import time
 import argparse
 import zenoh
 from zenoh import Zenoh, Value
@@ -255,5 +255,7 @@ print("Press q to stop...")
 c = '\0'
 while c != 'q':
     c = sys.stdin.read(1)
+
+time.sleep(1)
 
 z.close()

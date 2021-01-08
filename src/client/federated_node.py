@@ -218,4 +218,6 @@ else:
     print("Permission denied. Waited 10 seconds but no response arrived")
     input("Press enter to terminate")
 
+time.sleep(1)
+
 z.close()
