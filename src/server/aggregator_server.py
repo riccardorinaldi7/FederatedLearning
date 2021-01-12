@@ -122,8 +122,9 @@ def federated_averaging():
             # model.eval() # not necessary if no inference must be processed
             client_models.append(model)
         print(">> [Federated averaging] {} model loaded".format(len(client_models)))
-
+	
         # This will take simple mean of the weights of models. Code from towardsdatascience.com
+        global global_model
         global_dict = global_model.state_dict()
         for k in global_dict.keys():
             global_dict[k] = torch.stack([client_models[i].state_dict()[k].float() for i in range(len(client_models))], 0).mean(0)
@@ -176,7 +177,7 @@ def send_parameters_to_all():
     binary = f.read()
     f.close()
     value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
-    # print('Parameters file loaded - zenoh.Value created and ready to be sent')
+    print('Parameters file loaded - zenoh.Value created and ready to be sent')
 
     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
     for node_id in participants:
@@ -209,6 +210,7 @@ def message_listener(change):
             participants.append(node_id)
             if len(participants) == num_clients:
                 federated_round_in_progress = True
+                time.sleep(2)
                 send_parameters_to_all()           # all the clients are in, send global params to everyone
             else:
                 print(">> [Message listener] {} participants missing".format(num_clients-len(participants)))
@@ -221,14 +223,14 @@ def message_listener(change):
         print(">> [Message Listener] The message from {} is not a string".format(node_id))
 
 
+global_model = Classifier()
+
 #  At server startup create a base global_params file as long as another file exists. In that case, the user decide what to do
 if os.path.isfile("global_parameters.pt"):
     res = input("A global_parameters file already exists. Overwrite the file?\nThis action can overwrite a smarter model. (y/N) ")
     if len(res) > 0 and res[0] == 'y':
-        global_model = Classifier()
         torch.save(global_model.state_dict(), 'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 else:
-    global_model = Classifier()
     torch.save(global_model.state_dict(), 'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 
 # initiate logging
