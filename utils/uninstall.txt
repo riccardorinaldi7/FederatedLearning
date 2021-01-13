@@ -1,0 +1,23 @@
+# CURL
+
+sudo apt remove -y curl libasn1-8-heimdal libbrotli1 libcurl4 libgssapi3-heimdal libhcrypto4-heimdal libheimbase1-heimdal libheimntlm0-heimdal libhx509-5-heimdal libkrb5-26-heimdal libldap-2.4-2 libldap-common libnghttp2-14 libpsl5 libroken18-heimdal librtmp1 libsasl2-2 libsasl2-modules libsasl2-modules-db libssh-4 libwind0-heimdal publicsuffix
+
+# GIT
+
+sudo apt remove -y git git-man libcurl3-gnutls liberror-perl libgdbm-compat4 libgdbm6 libperl5.30 patch perl perl-modules-5.30
+
+# VENV
+
+sudo apt remove -y python-pip-whl python3-distutils python3-lib2to3 python3-venv python3.8-venv
+
+# PIP
+
+sudo apt remove -y binutils binutils-common binutils-x86-64-linux-gnu build-essential cpp cpp-10 dirmngr dpkg-dev fakeroot g++ g++-10 gcc gcc-10 gnupg gnupg-l10n gnupg-utils gpg gpg-agent gpg-wks-client gpg-wks-server gpgconf gpgsm libalgorithm-diff-perl libalgorithm-diff-xs-perl libalgorithm-merge-perl libasan6 libassuan0 libatomic1 libbinutils libc-dev-bin libc6-dev libcc1-0 libcrypt-dev libctf-nobfd0 libctf0 libdpkg-perl libexpat1-dev libfakeroot libfile-fcntllock-perl libgcc-10-dev libgomp1 libisl22 libitm1 libksba8 liblsan0 libmpc3 libmpfr6 libnpth0 libnsl-dev libpython3-dev libpython3.8-dev libquadmath0 libstdc++-10-dev libtirpc-dev libtsan0 libubsan1 linux-libc-dev make manpages manpages-dev pinentry-curses python3-dev python3-pip python3-setuptools python3-wheel python3.8-dev rpcsvc-proto zlib1g-dev
+
+# MATURIN
+
+pip3 uninstall maturin
+
+# CARGO e RUST
+
+lanciare comando per installare ma scegliere opzione 3

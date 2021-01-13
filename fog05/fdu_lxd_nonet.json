@@ -1,0 +1,34 @@
+{
+    "id": "lxd_federated_fdu",
+    "name": "test_1",
+    "computation_requirements": {
+        "cpu_arch": "x86_64",
+        "cpu_min_freq": 0,
+        "cpu_min_count": 1,
+        "ram_size_mb": 1024.0,
+        "storage_size_gb": 5.0
+    },
+    "image": {
+        "uri": "file:///home/riccardo/fog-node-image.tar.xz ",
+        "checksum": "",
+        "format": "tar.xz"
+    },
+    "storage": [],
+    "hypervisor": "LXD",
+    "migration_kind": "COLD",
+    "interfaces": [
+        {
+            "name": "eth0",
+            "is_mgmt": false,
+            "if_type": "INTERNAL",
+            "virtual_interface": {
+                "intf_type": "BRIDGED",
+                "vpci": "lxdbr0",
+                "bandwidth": 10
+            }
+        }
+    ],
+    "io_ports": [],
+    "connection_points": [],
+    "depends_on": []
+}
