@@ -9,7 +9,7 @@
         "storage_size_gb": 5.0
     },
     "image": {
-        "uri": "file:///home/riccardo/fog-node-image.tar.xz ",
+        "uri": "file:///home/riccardo/fog-node-image.tar.xz",
         "checksum": "",
         "format": "tar.xz"
     },
