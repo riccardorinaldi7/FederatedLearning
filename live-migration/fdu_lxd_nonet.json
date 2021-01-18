@@ -9,13 +9,13 @@
         "storage_size_gb": 5.0
     },
     "image": {
-        "uri": "file:///home/riccardo/fog-node-image.tar.xz",
+        "uri": "lxd://alpine/edge",
         "checksum": "",
-        "format": "tar.xz"
+        "format": ""
     },
     "storage": [],
     "hypervisor": "LXD",
-    "migration_kind": "COLD",
+    "migration_kind": "LIVE",
     "interfaces": [
         {
             "name": "eth0",
