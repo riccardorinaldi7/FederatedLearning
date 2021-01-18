@@ -15,7 +15,7 @@
     },
     "storage": [],
     "hypervisor": "LXD",
-    "migration_kind": "COLD",
+    "migration_kind": "LIVE",
     "interfaces": [
         {
             "name": "eth0",
