@@ -1,14 +1,7 @@
-# Copyright (c) 2017, 2020 ADLINK Technology Inc.
+# Copyright (c) 2020 Riccardo Rinaldi
 #
 # This program and the accompanying materials are made available under the
-# terms of the Eclipse Public License 2.0 which is available at
-# http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
-# which is available at https://www.apache.org/licenses/LICENSE-2.0.
-#
-# SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
-#
-# Contributors:
-#   ADLINK zenoh team, <zenoh@adlink-labs.tech>
+# terms of the GNU License 2.0 
 
 # import json
 # import sys
@@ -61,13 +54,16 @@ if args.peer is not None:
     conf["peer"] = ",".join(args.peer)
 if args.listener is not None:
     conf["listener"] = ",".join(args.listener)
-path = args.path
+base_path = args.path                             # /federated/nodes
 value = args.value
+notification_path = base_path + '/notifications'  # /federated/nodes/notifications
+
+# ADDED RANDOM INT FOR LOCAL USAGE
+new_uuid = str(uuid.getnode()) + str(random.randint(1, 100))   # uuid + randint
 
 # use UUID module to create a custom folder
-# ADDED RANDOM INT FOR LOCAL USAGE
-path = path + "/" + str(uuid.getnode()) + str(random.randint(1, 100))  # /federated/nodes/uuid
-print("Using path: {}".format(path))
+node_path = base_path + "/" + new_uuid            # /federated/nodes/new_uuid
+print("Using path: {}".format(node_path))
 
 # --- zenoh-net code --- --- --- --- --- --- --- --- --- --- ---
 
@@ -141,82 +137,90 @@ def download_and_train():
             print(f"Training loss: {running_loss / len(trainloader)}")
 
     print('Model trained!')
+    
 
-
-# --- save the parameters and wrap them into a zenoh.Value --- ---
-# def save_and_send_parameters():
-#     torch.save(model.state_dict(), 'my_parameters.pt')
-#     f = open('my_parameters.pt', 'rb')
-#     binary = f.read()
-#     f.close()
-#     file_value = zenoh.Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
-#     print('Model saved - zenoh.Value created')
-#
-#     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
-#     local_path = path + '/local'
-#     print("Put Data into {}".format(local_path))
-#     workspace.put(local_path, file_value)
-
-
-# --- Listen for "messages" from the server --- --- --- --- --- ---
-def global_param_listener(change):
-    print(">> [Subscription listener] received {} on {}: binary content".format(change.value.encoding_descr(), change.path))
-    if change.value.encoding_descr() == 'application/octet-stream':
-        gp_file = open('global_parameters.pt', 'wb')
-        gp_file.write(bytearray(change.value.get_content()))
-        gp_file.close()
-        print(">> [Subscription listener] global_parameters.pt saved")
-        global federated_round_permitted
-        federated_round_permitted = True
-
-    else:
-        print(">> Unexpected content: {}".format(change.value))
-
-# --- Federated Protocol --- --- --- --- --- --- --- --- --- ---
-
-
-# 1 - Node asks to join a federated round --- --- --- --- --- ---
-federated_round_permitted = False
-print("I have enough data to train a model")
-input("Press enter to send the request")
-workspace.put(path + '/messages', "join-round-request")
-
-# 2 - If the server accepts the request, it will write the parameters in /federated/nodes/<node_id>/global_params --- ---
-subscriber = workspace.subscribe(path + '/global_params', global_param_listener)  # /federated/nodes/<node_id>/global_params
-
-# 3 - Node waits 10 second, then if no parameters are written, it considers his request rejected by the server
-time.sleep(30)
-subscriber.close()
-
-# 4 - if the server responded with the parameters, the training begin
-if federated_round_permitted:
-    input("Parameters received. Press enter to load them into the model")
-    # 5 - local training
+def setup_training():
+    # 4 - setup training and load parameters
+    input("Parameters received. Press enter to load them into the model")  
     model = Classifier()
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.003)
-    model.load_state_dict(torch.load('global_parameters.pt'))
-    input("Press enter to train the model")
-    download_and_train()
-    # 6 - computed parameters are sent to the server for the aggregation
-    input("Press enter to send parameters to the server")
-    torch.save(model.state_dict(), 'my_parameters.pt')
-    f = open('my_parameters.pt', 'rb')
+    model.load_state_dict(torch.load('global.pt'))
+    
+
+def save_model():
+    # input("Press enter to send parameters to the server")
+    torch.save(model.state_dict(), 'local.pt')
+    f = open('local.pt', 'rb')
     binary = f.read()
     f.close()
     file_value = zenoh.Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
     print('Model saved - zenoh.Value created')
 
     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
-    local_path = path + '/local'
+    local_path = node_path + '/local'                    # /federated/nodes/new_uuid/local
     print("Put Data into {}".format(local_path))
     workspace.put(local_path, file_value)
     print("Done")
+    return local_path
 
-# 4b - the request is rejected and the node won't cooperate in a federated learning session
+
+# --- Reply to get from server --- --- --- --- --- ---
+def eval_callback(get_request):
+    print(">> [Eval listener] received get with selector: {}".format(get_request.selector))
+    global round_started
+    round_started = True
+    
+    # The returned Value is a StringPath that identify the path where the client will find 
+    # the global parameters to use for the training. For example:
+    # - "/federated/nodes/new_uuid?(path=/federated/global)" : the Eval function does a GET
+    #      on "/federated/global" and uses the 1st result to regenerate the global_param.pt file
+    global_param_path = get_request.selector.properties.get('path')
+    if name.startswith('/'):
+        print('>> [Eval listener] Try to get the model at path: {}'.format(global_param_path))
+        result = workspace.get(global_param_path)
+        print('>> [Eval listener] checking result...')
+        if len(result) == 1 and result[0].value.encoding_descr() == 'application/octet-stream':
+            file_bytes = result[0].value.get_content()
+            f = open('global.pt', 'wb')
+            f.write(bytearray(file_bytes))
+            f.close()
+            print(">> [Eval listener] global parameters received")
+            setup_training()
+            download_and_train()
+            local_param_path = save_model()
+            print(">> [Eval listener] Model trained. Sending back the update...")
+            get_request.reply(node_path, '{}'.format(local_param_path))
+            global training_done
+            training_done = True
+
+
+# --- Federated Protocol --- --- --- --- --- --- --- --- --- ---
+# 1 - Node tells to the server it has enough data --- --- --- --- --- ---
+training_done = False
+round_started = False
+print("I have enough data to train a model")
+input("Press enter to send the notification")
+workspace.put(notification_path, new_uuid)                   # /federated/nodes/notifications
+
+# 2 - The client waits for server's eval with model passed as parameter
+z_eval = w.register_eval(node_path, eval_callback)     # /federated/nodes/new_uuid
+
+# 3 - Wait 90 seconds for a get then close the eval registration
+time.sleep(90)
+print('Closing eval...')
+z_eval.close()
+
+# 6 - Ending message
+time.sleep(1)
+if round_started:
+    print('Training at work...')
+    while not training_done:
+        time.sleep(3)
 else:
-    print("Permission denied. Waited 10 seconds but no response arrived")
-    input("Press enter to terminate")
+    print("Waited 90 seconds but there's been no word from the server")
+    
+input('Press enter to terminate...')
 
 time.sleep(1)
 

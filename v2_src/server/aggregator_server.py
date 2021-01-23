@@ -65,7 +65,7 @@ participants = list()  # contains uuid of the participant nodes
 federated_round_in_progress = False
 
 
-# -- function definitions  --- --- --- --- --- --- --- --- --- --- ---
+# --- --- --- --- --- --- --- --- --- --- --- ---
 
 
 class Classifier(nn.Module):
@@ -165,7 +165,7 @@ def local_param_listener(change):
         print(">> [Local param listener] Not a parameter file. Content: {}".format(change.value))
 
 
-# for debug purposes
+# for debug purpouses
 def simple_listener(change):
     print("Hey! Something happened at {}".format(change.path))
 
@@ -222,6 +222,7 @@ def message_listener(change):
     else:
         print(">> [Message Listener] The message from {} is not a string".format(node_id))
 
+# --- INIT FEDERATED LEARNING -------------------------
 
 global_model = Classifier()
 
