@@ -50,7 +50,7 @@ if args.peer is not None:
     conf["peer"] = ",".join(args.peer)
 if args.listener is not None:
     conf["listener"] = ",".join(args.listener)
-selector = args.selector
+selector = args.selector                        # /federated/nodes
 
 # Hyperparameters for federated learning --- --- --- --- --- ---
 
@@ -173,66 +173,55 @@ def simple_listener(change):
 def send_parameters_to_all():
     global workspace
 
-    f = open('global_parameters.pt', 'rb')
+    f = open('global.pt', 'rb')
     binary = f.read()
     f.close()
     value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
-    print('Parameters file loaded - zenoh.Value created and ready to be sent')
+    global_parameters_path = selector + '/global'
+    print('zenoh.Value created and ready to be sent to {}'.format(global_parameters_path))
 
-    # --- send parameters with zenoh --- --- --- --- --- --- --- ---
-    for node_id in participants:
-        global_node_path = selector + '/' + node_id + '/global_params'
-        workspace.put(global_node_path, value)  # /federated/nodes/<node_id>/global_params
-        print(">> [Global params sender] global_params sent to {}".format(global_node_path))
-
-    # every node is logged in, let's wait for the updated_parameters
-    # local_params_selector = selector + '/*/local'
-    # local_sub = workspace.subscribe('/federated/test', simple_listener)
-    # print(">> [Global params sender] subscribed to '{}'...".format(local_params_selector))
+    # TODO: do here all the gets to the clients --- --- --- --- --- --- --- ---
+    # selector = '/federated/nodes/new_uuid?(path=/federated/nodes/global)
+    # wait for responses
 
 
-# -- LISTEN ON /federated/nodes/*/messages PATH-- -- -- -- -- -- -- -- -- -- -- --
-def message_listener(change):
-    print(">> [Message listener] received {} on {} : {}".format(change.value.encoding_descr(), change.path, '' if change.value is None else change.value.get_content()))
+# -- listen on /federated/nodes/notifications for ready clients -- -- -- -- -- -- -- -- -- -- -- --
+def notification_listener(change):
+    print(">> [Notification listener] received {} on {} : {}".format(change.value.encoding_descr(), change.path, '' if change.value is None else change.value.get_content()))
     global federated_round_in_progress
-    node_id = change.path.split('/')[3]  # sender's id
+    
     if change.value.encoding_descr() == 'text/plain':
 
         # 2 - Request to join a federated session
-        if change.value.get_content() == 'join-round-request':
-            # check here whether accept the request or not
-            print(">> [Message listener] received a request to join a round by {}.".format(node_id))
+        # check here whether accept the request or not
+        node_id = change.value.get_content()
+        print(">> [Message listener] {} is ready for training".format(node_id))
 
-            if federated_round_in_progress:
-                print(">> [Message listener] Request rejected: a federated round is already running")
-                return
+        if federated_round_in_progress:
+            print(">> [Message listener] Request rejected: federated round already running")
+            return
 
-            participants.append(node_id)
-            if len(participants) == num_clients:
-                federated_round_in_progress = True
-                time.sleep(2)
-                send_parameters_to_all()           # all the clients are in, send global params to everyone
-            else:
-                print(">> [Message listener] {} participants missing".format(num_clients-len(participants)))
-
-        # --- Message unknown --- --- --- --- --- --- --- --- --- --- --- ---
+        participants.append(node_id)
+        if len(participants) == num_clients:
+            federated_round_in_progress = True
+            send_parameters_to_all()           # all the clients are in, send global params to everyone
         else:
-            print(">> [Message listener] Message content unknown")
+            print(">> [Message listener] {} participants missing".format(num_clients-len(participants)))
 
     else:
-        print(">> [Message Listener] The message from {} is not a string".format(node_id))
+        print(">> [Message Listener] Forrbidden value of type {}".format(change.value.encoding_descr()))
 
 # --- INIT FEDERATED LEARNING -------------------------
 
 global_model = Classifier()
 
 #  At server startup create a base global_params file as long as another file exists. In that case, the user decide what to do
-if os.path.isfile("global_parameters.pt"):
+if os.path.isfile("global.pt"):
     res = input("A global_parameters file already exists. Overwrite the file?\nThis action can overwrite a smarter model. (y/N) ")
     if len(res) > 0 and res[0] == 'y':
-        torch.save(global_model.state_dict(), 'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
+        torch.save(global_model.state_dict(), 'global.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 else:
-    torch.save(global_model.state_dict(), 'global_parameters.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
+    torch.save(global_model.state_dict(), 'global.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 
 # initiate logging
 zenoh.init_logger()
@@ -244,15 +233,11 @@ print("New workspace...")
 workspace = z.workspace()
 
 
-# 1 - Listen for messages
-msg_selector = selector + '/*/messages'
-print("Subscribed to '{}'...".format(msg_selector))
-msg_subscriber = workspace.subscribe(msg_selector, message_listener)
+# 1 - Listen for notifications
+notification_selector = selector + '/notifications'
+print("Subscribed to '{}'...".format(noitification_selector))
+notification_subscriber = workspace.subscribe(msg_selector, notification_listener)
 
-# n - Listen for pt file from nodes
-local_params_selector = selector + '/*/local'
-local_sub = workspace.subscribe(local_params_selector, local_param_listener)
-print("subscribed to '{}'...".format(local_params_selector))
 
 print("Press q to stop...")
 c = '\0'
