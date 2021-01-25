@@ -50,6 +50,7 @@ Then open a Python shell and execute:
 >>> api.node.plugins(api.node.list()[0])
 [xxxx-xxxx-xxxx-xxxx-xxxx, xxxx-xxxx-xxxx-xxxx-xxxx, xxxx-xxxx-xxxx-xxxx-xxxx]  # these are the plugins' uuids running on the given node
 ```
-When you call FIMAPI() without parameters, it tries to connect to yaks/zenoh server on localhost. To use another server run FIMAPI(server_IP).
-But be aware that in order to use the plugins with zenoh on the network, you need to change the ylocator attribute in every plugin's configuration.
-The config files are located at /etc/fos/agent.json and /etc/fos/plugins/<plugin_name>/<plugin_name.json>
+When you call FIMAPI() without parameters, it tries to connect to yaks/zenoh server on localhost. To use another server run FIMAPI(remote_IP).
+Be aware that in order to use the plugins with zenoh on the network, you need to change the ylocator attribute in every plugin's configuration.
+The config files are located at /etc/fos/agent.json and /etc/fos/plugins/<plugin_name>/<plugin_name.json>.
+Moreover, if you are on a node where plugins are using a zenoh server on the network, running `sudo systemctl start zenoh` in that machine is not needed. That service become useless since the plugins will use the server on remote_IP.
