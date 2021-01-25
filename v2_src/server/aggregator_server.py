@@ -139,6 +139,7 @@ def simple_listener(change):
     
 def get_thread_function(uuid):
     print(">> [Thread] Thread {}: starting".format(uuid))
+    # TODO: add to selector properties other configurations like num_epochs, batch_size
     selector = '/federated/nodes/' + uuid + '?(path=/federated/nodes/global)'
     print(">> [Thread] Thread {} getting on selector {}".format(uuid, selector))
     data = workspace.get(selector)
