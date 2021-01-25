@@ -1,14 +1,9 @@
-# Copyright (c) 2017, 2020 ADLINK Technology Inc.
+# Copyright (c) 2020 Riccardo Rinaldi
+#
+# v2.0
 #
 # This program and the accompanying materials are made available under the
-# terms of the Eclipse Public License 2.0 which is available at
-# http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
-# which is available at https://www.apache.org/licenses/LICENSE-2.0.
-#
-# SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
-#
-# Contributors:
-#   ADLINK zenoh team, <zenoh@adlink-labs.tech>
+# terms of the GNU License 2.0 
 
 import sys
 import time
@@ -88,18 +83,17 @@ class Classifier(nn.Module):
         return x
 
 
-# -- SAVE AND PUT THE MODEL ON /federated/global/parameters
 def save_and_put_global_parameters(dictionary):
-    torch.save(dictionary, 'global_parameters.pt')
-    print('>> [Save and Put] global_parameters.pt saved')
+    torch.save(dictionary, 'global.pt')
+    print('>> [Save and Put] global.pt saved')
 
-    f = open('global_parameters.pt', 'rb')
+    f = open('global.pt', 'rb')
     binary = f.read()
     f.close()
     file_value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
 
     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
-    global_parameters_path = '/federated/global/parameters'
+    global_parameters_path = '/federated/nodes/global'
     print("Put global parameters into {}".format(global_parameters_path))
     workspace.put(global_parameters_path, file_value)
 
@@ -135,54 +129,42 @@ def federated_averaging():
         clean_protocol()  # keep ready for another round
     else:
         print(">> [Federated averaging] other {} trained models required".format(num_clients-len(trained_parameters)))
-    
-
-def local_param_listener(change):
-    print(">> [Local param listener] received local parameter")
-    global federated_round_in_progress
-    if not federated_round_in_progress:
-        print(">> [Local param listener] no round in progress")
-
-    if change.value.encoding_descr() == 'application/octet-stream':
-        node_id = change.path.split('/')[3]  # path = /federated/nodes/<node_id>
-
-        if node_id not in participants:
-            print(">> [Local param listener] node not in this round: parameters discarded")
-            return
-
-        filename = node_id + '.pt'
-        f = open(filename, 'wb')
-        f.write(bytearray(change.value.get_content()))
-        f.close()
-        print(">> [Local param listener] Parameters file saved")
-        if filename in trained_parameters:
-            print(">> [Local param listener] something gone wrong. Received twice from a client")
-            return
-        trained_parameters.append(filename)
-        federated_averaging()
-
-    else:
-        print(">> [Local param listener] Not a parameter file. Content: {}".format(change.value))
 
 
 # for debug purpouses
 def simple_listener(change):
     print("Hey! Something happened at {}".format(change.path))
+    
+    
+def get_thread_function(uuid):
+    print(">> [Thread] Thread {}: starting".format(uuid))
+    selector = '/federated/nodes/' + uuid + '?(path=/federated/nodes/global)'
+    print(">> [Thread] Thread {} getting on selector {}".format(uuid, selector))
+    data = workspace.get(selector)
+    filename = uuid + '.pt'
+    f = open(filename, 'wb')
+    f.write(bytearray(data[0].value.get_content()))
+    f.close()
+    trained_parameters.append(filename)
+    print(">> [Thread] Thread {}: finishing".format(uuid))
 
 
 def send_parameters_to_all():
-    global workspace
-
-    f = open('global.pt', 'rb')
-    binary = f.read()
-    f.close()
-    value = Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
-    global_parameters_path = selector + '/global'
-    print('zenoh.Value created and ready to be sent to {}'.format(global_parameters_path))
-
-    # TODO: do here all the gets to the clients --- --- --- --- --- --- --- ---
+    # here all the gets to the clients --- --- --- --- --- --- --- ---
     # selector = '/federated/nodes/new_uuid?(path=/federated/nodes/global)
-    # wait for responses
+    threads = list()
+    for uuid in participants:
+        print(">> [Send Parameters] create and start thread %s.".format(uuid))
+        x = threading.Thread(target=get_thread_function, args=(uuid,))
+        threads.append(x)
+        x.start()
+
+    for index, thread in enumerate(threads):
+        print("Main    : before joining thread {}.".format(index))
+        thread.join()
+        print("Main    : thread {} done".format(index))
+    
+    federated_averaging()
 
 
 # -- listen on /federated/nodes/notifications for ready clients -- -- -- -- -- -- -- -- -- -- -- --
@@ -192,8 +174,7 @@ def notification_listener(change):
     
     if change.value.encoding_descr() == 'text/plain':
 
-        # 2 - Request to join a federated session
-        # check here whether accept the request or not
+        # 2 - A client notified that it's ready
         node_id = change.value.get_content()
         print(">> [Message listener] {} is ready for training".format(node_id))
 
@@ -220,6 +201,8 @@ if os.path.isfile("global.pt"):
     res = input("A global_parameters file already exists. Overwrite the file?\nThis action can overwrite a smarter model. (y/N) ")
     if len(res) > 0 and res[0] == 'y':
         torch.save(global_model.state_dict(), 'global.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
+    else:
+        global_model.load_state_dict(torch.load('global.pt'))
 else:
     torch.save(global_model.state_dict(), 'global.pt')  # be aware that this can overwrite a smarter model if this application is stopped and restarted
 
@@ -232,11 +215,14 @@ z = Zenoh(conf)
 print("New workspace...")
 workspace = z.workspace()
 
+# 0 - Put global model to a path where clients can get it
+print(">> [Send Parameters] Put global model in /federated/nodes/global")
+save_and_put_global_parameters(global_model.state_dict())
 
 # 1 - Listen for notifications
 notification_selector = selector + '/notifications'
 print("Subscribed to '{}'...".format(noitification_selector))
-notification_subscriber = workspace.subscribe(msg_selector, notification_listener)
+notification_subscriber = workspace.subscribe(notification_selector, notification_listener)
 
 
 print("Press q to stop...")

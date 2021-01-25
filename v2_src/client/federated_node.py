@@ -1,5 +1,7 @@
 # Copyright (c) 2020 Riccardo Rinaldi
 #
+# v2.0
+#
 # This program and the accompanying materials are made available under the
 # terms of the GNU License 2.0 
 
@@ -156,13 +158,7 @@ def save_model():
     f.close()
     file_value = zenoh.Value.Raw(zenoh.net.encoding.APP_OCTET_STREAM, binary)
     print('Model saved - zenoh.Value created')
-
-    # --- send parameters with zenoh --- --- --- --- --- --- --- ---
-    local_path = node_path + '/local'                    # /federated/nodes/new_uuid/local
-    print("Put Data into {}".format(local_path))
-    workspace.put(local_path, file_value)
-    print("Done")
-    return local_path
+    return file_value
 
 
 # --- Reply to get from server --- --- --- --- --- ---
@@ -188,9 +184,9 @@ def eval_callback(get_request):
             print(">> [Eval listener] global parameters received")
             setup_training()
             download_and_train()
-            local_param_path = save_model()
+            file_value = save_model()
             print(">> [Eval listener] Model trained. Sending back the update...")
-            get_request.reply(node_path, '{}'.format(local_param_path))
+            get_request.reply(node_path, file_value)
             global training_done
             training_done = True
 
