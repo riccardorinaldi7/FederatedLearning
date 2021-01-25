@@ -14,6 +14,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 import os
+import threading
 
 # --- Command line argument parsing --- --- --- --- --- ---
 parser = argparse.ArgumentParser(
@@ -94,7 +95,7 @@ def save_and_put_global_parameters(dictionary):
 
     # --- send parameters with zenoh --- --- --- --- --- --- --- ---
     global_parameters_path = '/federated/nodes/global'
-    print("Put global parameters into {}".format(global_parameters_path))
+    print(">> [Save and Put] Put global parameters into {}".format(global_parameters_path))
     workspace.put(global_parameters_path, file_value)
 
 
@@ -154,15 +155,15 @@ def send_parameters_to_all():
     # selector = '/federated/nodes/new_uuid?(path=/federated/nodes/global)
     threads = list()
     for uuid in participants:
-        print(">> [Send Parameters] create and start thread %s.".format(uuid))
+        print(">> [Send Parameters] create and start thread {}.".format(uuid))
         x = threading.Thread(target=get_thread_function, args=(uuid,))
         threads.append(x)
         x.start()
 
     for index, thread in enumerate(threads):
-        print("Main    : before joining thread {}.".format(index))
+        print(">> [Send Parameters] before joining thread {}.".format(index))
         thread.join()
-        print("Main    : thread {} done".format(index))
+        print(">> [Send Parameters] thread {} done".format(index))
     
     federated_averaging()
 
@@ -216,12 +217,12 @@ print("New workspace...")
 workspace = z.workspace()
 
 # 0 - Put global model to a path where clients can get it
-print(">> [Send Parameters] Put global model in /federated/nodes/global")
+print("Put global model in /federated/nodes/global")
 save_and_put_global_parameters(global_model.state_dict())
 
 # 1 - Listen for notifications
 notification_selector = selector + '/notifications'
-print("Subscribed to '{}'...".format(noitification_selector))
+print("Subscribed to '{}'...".format(notification_selector))
 notification_subscriber = workspace.subscribe(notification_selector, notification_listener)
 
 

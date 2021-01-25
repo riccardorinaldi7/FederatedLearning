@@ -67,17 +67,6 @@ new_uuid = str(uuid.getnode()) + str(random.randint(1, 100))   # uuid + randint
 node_path = base_path + "/" + new_uuid            # /federated/nodes/new_uuid
 print("Using path: {}".format(node_path))
 
-# --- zenoh-net code --- --- --- --- --- --- --- --- --- --- ---
-
-# initiate logging
-zenoh.init_logger()
-
-print("Opening session...")
-z = Zenoh(conf)
-
-print("New workspace...")
-workspace = z.workspace()
-
 # --- Define network architecture, criterion and optimizer --- --- --- --- ---
 
 print('Defining the model...')
@@ -127,12 +116,12 @@ def download_and_train():
     for e in range(epochs):
         running_loss = 0
         for images, labels in trainloader:
-            log_ps = model(images)
-            loss = criterion(log_ps, labels)
+            log_ps = globals()['model'](images)
+            loss = globals()['criterion'](log_ps, labels)
 
-            optimizer.zero_grad()
+            globals()['optimizer'].zero_grad()
             loss.backward()
-            optimizer.step()
+            globals()['optimizer'].step()
 
             running_loss += loss.item()
         else:
@@ -144,15 +133,15 @@ def download_and_train():
 def setup_training():
     # 4 - setup training and load parameters
     input("Parameters received. Press enter to load them into the model")  
-    model = Classifier()
-    criterion = nn.NLLLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.003)
-    model.load_state_dict(torch.load('global.pt'))
+    globals()['model'] = Classifier()
+    globals()['criterion'] = nn.NLLLoss()
+    globals()['optimizer'] = optim.Adam(model.parameters(), lr=0.003)
+    globals()['model'].load_state_dict(torch.load('global.pt'))
     
 
 def save_model():
     # input("Press enter to send parameters to the server")
-    torch.save(model.state_dict(), 'local.pt')
+    torch.save(globals()['model'].state_dict(), 'local.pt')
     f = open('local.pt', 'rb')
     binary = f.read()
     f.close()
@@ -172,7 +161,7 @@ def eval_callback(get_request):
     # - "/federated/nodes/new_uuid?(path=/federated/global)" : the Eval function does a GET
     #      on "/federated/global" and uses the 1st result to regenerate the global_param.pt file
     global_param_path = get_request.selector.properties.get('path')
-    if name.startswith('/'):
+    if global_param_path.startswith('/'):
         print('>> [Eval listener] Try to get the model at path: {}'.format(global_param_path))
         result = workspace.get(global_param_path)
         print('>> [Eval listener] checking result...')
@@ -189,10 +178,25 @@ def eval_callback(get_request):
             get_request.reply(node_path, file_value)
             global training_done
             training_done = True
+    else:
+        print(">> [Eval listener] Selector property is not a path")
+        
+        
+# --- zenoh-net code --- --- --- --- --- --- --- --- --- --- ---
+
+# initiate logging
+zenoh.init_logger()
+
+print("Opening session...")
+z = Zenoh(conf)
+
+print("New workspace...")
+workspace = z.workspace()
 
 
 # --- Federated Protocol --- --- --- --- --- --- --- --- --- ---
-# 1 - Node tells to the server it has enough data --- --- --- --- --- ---
+
+# 1 - Node tells the server it has enough data --- --- --- --- --- ---
 training_done = False
 round_started = False
 print("I have enough data to train a model")
@@ -200,7 +204,7 @@ input("Press enter to send the notification")
 workspace.put(notification_path, new_uuid)                   # /federated/nodes/notifications
 
 # 2 - The client waits for server's eval with model passed as parameter
-z_eval = w.register_eval(node_path, eval_callback)     # /federated/nodes/new_uuid
+z_eval = workspace.register_eval(node_path, eval_callback)     # /federated/nodes/new_uuid
 
 # 3 - Wait 90 seconds for a get then close the eval registration
 time.sleep(90)
