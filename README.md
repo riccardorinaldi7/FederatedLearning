@@ -54,3 +54,18 @@ When you call FIMAPI() without parameters, it tries to connect to yaks/zenoh ser
 Be aware that in order to use the plugins with zenoh on the network, you need to change the ylocator attribute in every plugin's configuration.
 The config files are located at /etc/fos/agent.json and /etc/fos/plugins/<plugin_name>/<plugin_name.json>.
 Moreover, if you are on a node where plugins are using a zenoh server on the network, running `sudo systemctl start zenoh` in that machine is not needed. That service become useless since the plugins will use the server on remote_IP.
+
+## Cold Migration
+
+Copy and paste the code below inside LXD_Plugin at line 745. This script will check whether the training is running inside the container. The training script must either be called "federated-node.py".
+```
+# WARNING: MY CODE
+code, out, err = cont.execute(['ps', 'aux'])
+while code == 0 and out.find('federated_node.py') > 0:
+    self.logger.info('migrate_fdu()', ' LXD Plugin - Instance has training process running. Wait until the end...')
+    time.sleep(5)
+    code, out, err = cont.execute(['ps', 'aux'])
+
+self.logger.info('migrate_fdu()', ' LXD Plugin - Instance is ready to migrate')
+# END OF MY CODE
+```
