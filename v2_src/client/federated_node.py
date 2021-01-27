@@ -5,8 +5,7 @@
 # This program and the accompanying materials are made available under the
 # terms of the GNU License 2.0 
 
-# import json
-# import sys
+from datetime import datetime
 import time
 import argparse
 import zenoh
@@ -18,7 +17,10 @@ import torch.nn.functional as F
 import uuid
 import random
 
-# import helper
+
+# current date and time
+timestamp = datetime.timestamp(datetime.now())
+print("timestamp =", timestamp)
 
 print('Libraries loaded...')
 

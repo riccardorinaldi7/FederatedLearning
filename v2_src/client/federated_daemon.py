@@ -14,14 +14,14 @@ from pathlib import Path
 # 2. loadavg file
 # 3. uptime cmd
 
-choice = 1
+info_source = 1
 train_data = False
 
 # current date and time
 timestamp = datetime.timestamp(datetime.now())
 print("timestamp =", timestamp)
 
-if choice == 1:
+if info_source == 1:
     # generate json file with system info
     subprocess.call("./sysinfo-to-json.sh", shell=True)
 
@@ -48,7 +48,7 @@ if choice == 1:
     global train_data
     train_data = True
 
-elif choice == 2:
+elif info_source == 2:
     res = subprocess.run(['cat', '/proc/loadavg'], stdout=subprocess.PIPE)
     load = res.stdout.decode('UTF-8').split()
     print('System load: {}'.format(loads))
@@ -57,7 +57,7 @@ elif choice == 2:
     global train_data
     train_data = True
 
-elif choice == 3:
+elif info_source == 3:
     res = subprocess.run(['uptime'], stdout=subprocess.PIPE)
     load = res.stdout.decode('UTF-8').split()
     print('System load: {}'.format(loads))
@@ -67,11 +67,11 @@ elif choice == 3:
     train_data = True
     
 else:
-    print("Invalid choice")
+    print("Invalid info_source")
     exit(1)
     
 if train_data:
-    exit_code = os.system("/usr/bin/python3 ~/federated_node.py > ~/federated.log")
+    exit_code = os.system("/usr/bin/python3 ~/federated_node.py >> ~/federated.log")
 else:
     print("It's not time for training yet")
     
