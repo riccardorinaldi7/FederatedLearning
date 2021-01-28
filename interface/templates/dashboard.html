@@ -1,0 +1,31 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Admin Dashboard</title>
+  <meta name="description" content="The Federated Dashboard">
+  <meta name="author" content="Riccardo Rinaldi">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+  <h1>Dashboard</h1>
+  <h3>Connected to {{ session['yaksIp'] }}</h3>
+  
+  {% if node_list %}
+      <ol>Node list:
+      {% for node in node_list %}
+          <li><div>{{node}}</li>
+      {% endfor %}
+      </ol>
+  {% else %}
+      <p>No nodes</p>
+  {% endif %}
+  
+  <!-- <script src="js/scripts.js"></script> -->
+</body>
+</html>
