@@ -10,8 +10,8 @@ sed -i "s,\"ylocator\":.*7447\",$replace," /etc/fos/plugins/plugin-os-linux/linu
 
 sed -i "s,\"ylocator\":.*7447\",$replace," /etc/fos/plugins/plugin-net-linuxbridge/linuxbridge_plugin.json
 
-sed -i "s,\"ylocator\":.*7447\",$replace," /etc/fos/plugins/plugin-fdu-containerd/containerd_plugin.json
+#sed -i "s,\"ylocator\":.*7447\",$replace," /etc/fos/plugins/plugin-fdu-containerd/containerd_plugin.json
 
 sed -i "s,\"ylocator\":.*7447\",$replace," /etc/fos/plugins/plugin-fdu-lxd/LXD_plugin.json
 
-sed -i "s,\"ylocator\":.*7447\",$replace," /etc/fos/plugins/plugin-fdu-native/native_plugin.json
+#sed -i "s,\"ylocator\":.*7447\",$replace," /etc/fos/plugins/plugin-fdu-native/native_plugin.json

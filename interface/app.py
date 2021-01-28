@@ -20,7 +20,7 @@ app.secret_key = b'8\xfb\xe6b\x84=\x7fl\xf0m\xcc\x92\xc1\x1f:\xcew\xdbq\x0eY\xe3
 @app.route('/')
 def index():
     if 'yaksIp' in session:
-        return 'You are connected to %s' % escape(session['yaksIp'])
+        return 'you are connected to %s' % escape(session['yaksIp'])
     return redirect(url_for('tutorial'))
     
     
