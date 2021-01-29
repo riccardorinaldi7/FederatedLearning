@@ -13,19 +13,33 @@
 </head>
 
 <body>
-  <h1>Dashboard</h1>
-  <h3>Connected to {{ session['yaksIp'] }}</h3>
+<nav>
+  <h1>DASHBOARD</h1>
+    <p class="subtitle"><i>Connected to {{ session['yaksIp'] }}</i></p>
+</nav>
   
-  {% if node_list %}
-      <ol>Node list:
-      {% for node in node_list %}
-          <li><div>{{node}}</li>
+  {% if 'nodes' in session %}
+      <ul id="node-list">
+      {% for node in session['nodes'] %}
+          <li class="node-item">
+              <div class="node-div">
+                  <img src="{{ url_for('static', filename='pc-desktop.png') }}">
+                  <lable>{{node}}</lable>
+              </div>
+          </li>
       {% endfor %}
-      </ol>
+      </ul>
   {% else %}
       <p>No nodes</p>
   {% endif %}
-  
+
+<section id="sidebar">
+    <h3>Upload deployment configuration</h3>
+    <form id="json-upload" action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <input type="submit" value="Upload">
+    </form>
+</section>
   <!-- <script src="js/scripts.js"></script> -->
 </body>
 </html>

@@ -1,3 +1,60 @@
 body{
-    padding: 20px
+    margin: 0;
+    font-family: "DejaVu Sans Mono", Arial, sans-serif;
+    width: 100%;
+    display: table;
+    color: #2b2b2b
+}
+
+nav{
+    padding: 10px 70px;
+    background-color: #2e5a80;
+    color: whitesmoke;
+}
+
+h1{
+    margin-bottom: 0;
+    font-size: 40px;
+}
+
+.subtitle{
+    margin-top: 5px;
+}
+
+#node-list{
+    display: table;
+    padding: 0;
+    margin: 20px;
+    float: left
+}
+
+.node-item{
+    float: left;
+    list-style: none;
+    padding: 20px;
+    background-color: whitesmoke;
+    margin: 10px;
+}
+
+.node-div img{
+    max-width: 150px;
+    margin: 0 auto;
+    display: block;
+}
+
+#sidebar{
+	background-color: #3b3b3b;
+	color: white;
+	min-width: 300px;
+	max-width: 400px;
+	float: right;
+	position: relative;
+	right: 0;
+	top: 0;
+    padding: 10px 40px;
+    height: 100vh;
+}
+
+#json-upload input {
+	margin: 6px 0;
 }

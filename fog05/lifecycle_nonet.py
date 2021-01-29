@@ -6,6 +6,7 @@ import sys
 import os
 import code
 
+
 def read_file(filepath):
     with open(filepath, 'r') as f:
         data = f.read()
