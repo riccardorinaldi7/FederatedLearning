@@ -41,6 +41,7 @@ def css():
 def dashboard(yaks_ip='127.0.0.1'):
     session['yaksIp'] = escape(yaks_ip)
     # TODO: fog05 stuff goes here
+    global a
     a = FIMAPI(session['yaksIp'])
     nodes = a.node.list()
     if len(nodes) == 0:
@@ -48,6 +49,7 @@ def dashboard(yaks_ip='127.0.0.1'):
         return redirect(url_for('close'))
 
     session['nodes'] = nodes
+    session['instances'] = dict()
     app.logger.debug('Nodes: {}'.format(nodes))
     return render_template('dashboard.html')
     
@@ -82,10 +84,38 @@ def upload_file():
             # file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             try:
                 fdu_d = FDU(json.loads(file.read()))
+                session['fdu_descriptor'] = fdu_d.to_json()
                 app.logger.debug('File upload succeeded')
+                global a
+                res = a.fdu.onboard(fdu_d)
+                app.logger.debug(res.to_json())
+                e_uuid = res.get_uuid()
+                session['fdu_uuid'] = e_uuid
             except ValueError:
                 app.logger.error("Fdu configuration json is malformed")
             return redirect(request.referrer)
         else:
             app.logger.error('Extension not allowed')
             return redirect(request.referrer)
+
+
+@app.route('/deploy/<node>')
+def deploy(node=''):
+    if node == '':
+        app.logger.error('Node id missing in deploy request')
+        return redirect(request.referrer)
+    app.logger.debug('Define fdu {} at {}'.format(session['fdu_uuid'], node))
+    inst_info = a.fdu.define(session['fdu_uuid'], node)
+    instance_id = inst_info.get_uuid()
+    app.logger.debug('Created new instance with id: {}'.format(instance_id))
+    a.fdu.configure(instance_id)
+    app.logger.debug('Congratulations! You deployed the fdu. Ready to start')
+    session['instances'][node] = instance_id
+    # app.logger.debug(session['instances'])
+    return redirect(request.referrer)
+
+
+@app.route('/start/<node>')
+def start(node=''):
+    app.logger.debug('Start here the fdu at {}'.format(node))
+    return redirect(request.referrer)
