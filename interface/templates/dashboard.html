@@ -24,13 +24,27 @@
       {% for node in session['nodes'] %}
           <li class="node-item">
               <div class="node-div">
+                  <lable><b>{{ node }}</b></lable>
                   <img src="{{ url_for('static', filename='pc-desktop.png') }}">
-                  <lable>{{ node }}</lable>
-                  {% if node in session['instances'] %}
-                  <p>Instance running: {{ session['instances'][node] }}</p>
-                  <form id="start" method="get" action="{{ url_for('start', node=node) }}">
-                      <input type="submit" value="Start">
-                  </form>
+
+                  {% if 'instance/{}'.format(node) in session %}
+                  {% set instance_id = session['instance/{}'.format(node)] %}
+                  <p>Deployed instance:</p> <p>{{ instance_id }}</p>
+                      {% if session[instance_id] == 'READY' %}
+                      <form id="start" method="get" action="{{ url_for('start', node=node) }}">
+                          <input type="submit" value="Start">
+                      </form>
+                      {% elif session[instance_id] == 'STARTED' %}
+                      <form id="stop" method="get" action="{{ url_for('stop', node=node) }}">
+                          <input type="submit" value="Stop">
+                      </form>
+                      {% elif session[instance_id] == 'STOPPED' %}
+                      <form id="remove" method="get" action="{{ url_for('remove', node=node) }}">
+                          <input type="submit" value="Remove">
+                      </form>
+                      {% else %}
+                        <p>Unknown instance's state</p>
+                      {% endif %}
                   {% elif 'fdu_uuid' in session %}
                   <form id="deploy" method="get" action="{{ url_for('deploy', node=node) }}">
                       <input type="submit" value="Deploy">
@@ -56,6 +70,9 @@
         <li><b>Image: </b> {{ session['fdu_descriptor']['image']['uri'] }}</li>
         <li><b>Migration: </b> {{ session['fdu_descriptor']['migration_kind'] }}</li>
     </ul>
+    <form id="remove-config" action="{{ url_for('offload') }}">
+        <input type="submit" value="Remove Configuration">
+    </form>
     {% else %}
     <h3>Upload deployment configuration</h3>
     <form id="json-upload" action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">

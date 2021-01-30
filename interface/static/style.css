@@ -34,6 +34,7 @@ h1{
     padding: 20px;
     background-color: whitesmoke;
     margin: 10px;
+    text-align: center;
 }
 
 .node-div img{
@@ -59,17 +60,16 @@ h1{
 	margin: 6px 0;
 }
 
-#deploy {
+#deploy, #start {
     margin-top: 19px;
 }
 
-#deploy input {
+.node-div form input {
 	display: block;
 	margin: 0 auto;
 	padding: 11px 45px;
 	text-transform: uppercase;
 	/* font-weight: bold; */
-	background-color: #ec9549;
 	color: #3b3b3b;
 	/* border: none; */
 	/* border-radius: 4px; */
@@ -78,7 +78,23 @@ h1{
 	cursor: pointer;
 }
 
-#deploy input:hover{
+#deploy input{
+    background-color: #ec9549;
+}
+
+#start input{
+    background-color: #40cb47;
+}
+
+#stop input{
+    background-color: #db4646;
+}
+
+#remove input{
+    background-color: #bbbbbb;
+}
+
+#deploy input:hover, #start input:hover, #stop input:hover, #remove input:hover{
     background-color: #3b3b3b;
     color: whitesmoke;
 }
