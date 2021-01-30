@@ -55,8 +55,8 @@ def main(ip, fdufile):
     # display choice
     print('Choose at which node you want to migrate the fdu:')
     for idx, n in enumerate(nodes):
-    	if idx != index:
-        	print('{}: {}'.format(idx, n))
+        if idx != index:
+            print('{}: {}'.format(idx, n))
     mig_index = input('')
     mig_info = a.fdu.migrate(instid, nodes[int(mig_index)])
     print(mig_info)

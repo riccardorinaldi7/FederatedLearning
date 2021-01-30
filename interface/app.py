@@ -67,7 +67,7 @@ def dashboard(yaks_ip=''):
     
 @app.route('/connect')
 def connect():
-    return 'Connect here'
+    return render_template('connect.html')
 
 
 @app.route('/tutorial')
@@ -170,4 +170,14 @@ def offload():
     session.pop('fdu_descriptor')
     session.pop('fdu_uuid')
     app.logger.debug('FDU configuration discarded')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/migrate')
+def migrate():
+    mig_node = escape(request.args.get('mig_node', ''))
+    if mig_node == '':
+        app.logger.error('Migration node id not within get request')
+    else:
+        app.logger.debug('Migrating FDU to {}'.format(mig_node))
     return redirect(url_for('dashboard'))

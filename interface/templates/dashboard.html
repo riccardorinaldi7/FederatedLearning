@@ -15,48 +15,60 @@
 
 <body>
 <nav>
-  <h1>DASHBOARD</h1>
+    <h1>DASHBOARD</h1>
     <p class="subtitle"><i>Connected to {{ session['yaksIp'] }}</i></p>
 </nav>
-  
-  {% if 'nodes' in session %}
-      <ul id="node-list">
-      {% for node in session['nodes'] %}
-          <li class="node-item">
-              <div class="node-div">
-                  <lable><b>{{ node }}</b></lable>
-                  <img src="{{ url_for('static', filename='pc-desktop.png') }}">
 
-                  {% if 'instance/{}'.format(node) in session %}
-                  {% set instance_id = session['instance/{}'.format(node)] %}
-                  <p>Deployed instance:</p> <p>{{ instance_id }}</p>
-                      {% if session[instance_id] == 'READY' %}
-                      <form id="start" method="get" action="{{ url_for('start', node=node) }}">
-                          <input type="submit" value="Start">
-                      </form>
-                      {% elif session[instance_id] == 'STARTED' %}
-                      <form id="stop" method="get" action="{{ url_for('stop', node=node) }}">
-                          <input type="submit" value="Stop">
-                      </form>
-                      {% elif session[instance_id] == 'STOPPED' %}
-                      <form id="remove" method="get" action="{{ url_for('remove', node=node) }}">
-                          <input type="submit" value="Remove">
-                      </form>
-                      {% else %}
-                        <p>Unknown instance's state</p>
-                      {% endif %}
-                  {% elif 'fdu_uuid' in session %}
-                  <form id="deploy" method="get" action="{{ url_for('deploy', node=node) }}">
-                      <input type="submit" value="Deploy">
-                  </form>
-                  {% endif %}
-              </div>
-          </li>
-      {% endfor %}
-      </ul>
-  {% else %}
-      <p>No nodes</p>
-  {% endif %}
+{% if 'nodes' in session %}
+<ul id="node-list">
+    {% for node in session['nodes'] %}
+    <li class="node-item">
+        <div class="node-div">
+            <lable><b>{{ node }}</b></lable>
+            <img src="{{ url_for('static', filename='pc-desktop.png') }}">
+
+            {% if 'instance/{}'.format(node) in session %}
+            {% set instance_id = session['instance/{}'.format(node)] %}
+            <p>Deployed instance:</p>
+            <p>{{ instance_id }}</p>
+                {% if session[instance_id] == 'READY' %}
+                <form id="start" method="get" action="{{ url_for('start', node=node) }}">
+                    <input type="submit" value="Start">
+                </form>
+                {% elif session[instance_id] == 'STARTED' %}
+                <form id="stop" method="get" action="{{ url_for('stop', node=node) }}">
+                    <input type="submit" value="Stop">
+                </form>
+                    {% if session['nodes']|length() > 1 %}
+                    <form id="migrate" method="get" action="{{ url_for('migrate') }}">
+                        <label for="migrate">Migrate to:</label>
+                        <select name="mig_node" id="mig_node">
+                            {% for mig_node in session['nodes'] %}
+                            {% if mig_node != node %}<option value="{{mig_node}}">{{mig_node}}</option>{% endif %}
+                            {% endfor %}
+                        </select>
+                        <input type="submit" value="Migrate">
+                    </form>
+                    {% endif %}
+                {% elif session[instance_id] == 'STOPPED' %}
+                <form id="remove" method="get" action="{{ url_for('remove', node=node) }}">
+                    <input type="submit" value="Remove">
+                </form>
+                {% else %}
+                <p>Unknown instance's state</p>
+                {% endif %}
+            {% elif 'fdu_uuid' in session %}
+            <form id="deploy" method="get" action="{{ url_for('deploy', node=node) }}">
+                <input type="submit" value="Deploy">
+            </form>
+            {% endif %}
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>No nodes</p>
+{% endif %}
 
 <section id="sidebar">
     {% if 'fdu_descriptor' in session %}
@@ -81,6 +93,6 @@
     </form>
     {% endif %}
 </section>
-  <!-- <script src="js/scripts.js"></script> -->
+<!-- <script src="js/scripts.js"></script> -->
 </body>
 </html>
