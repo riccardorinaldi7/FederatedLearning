@@ -57,7 +57,7 @@ Moreover, if you are on a node where plugins are using a zenoh server on the net
 
 ## Cold Migration
 
-Copy and paste the code below inside LXD_Plugin at line 745. This script will check whether the training is running inside the container. The training script must either be called "federated-node.py".
+Copy and paste the code below inside LXD_Plugin at line 745. This script will check whether the training is running inside the container or not. The script running in the container must be called "federated-node.py".
 ```
 # WARNING: MY CODE
 code, out, err = cont.execute(['ps', 'aux'])
@@ -69,3 +69,15 @@ while code == 0 and out.find('federated_node.py') > 0:
 self.logger.info('migrate_fdu()', ' LXD Plugin - Instance is ready to migrate')
 # END OF MY CODE
 ```
+
+## Live Migration
+
+To test live migration in Fog05 you have to:
+- comment lines 747 and 748
+- add the parameter "live=True" at line 749
+- start the container in your python script with fog05
+
+
+## DEBUG AND TESTING
+
+When you work with Fog05 and you want to solve some issues in you script, it is crucial to open a terminal for each plugin we want to investigate and run `journalctl -t <plugin_name> -f` in order to see the errors.

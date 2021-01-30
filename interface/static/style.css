@@ -70,7 +70,7 @@ h1{
 	padding: 11px 45px;
 	text-transform: uppercase;
 	/* font-weight: bold; */
-	color: #3b3b3b;
+	/* color: #3b3b3b; */
 	/* border: none; */
 	/* border-radius: 4px; */
 	/* box-shadow: 0px 0px 13px -7px black; */
@@ -78,7 +78,7 @@ h1{
 	cursor: pointer;
 }
 
-#deploy input{
+/*#deploy input{
     background-color: #ec9549;
 }
 
@@ -97,4 +97,4 @@ h1{
 #deploy input:hover, #start input:hover, #stop input:hover, #remove input:hover{
     background-color: #3b3b3b;
     color: whitesmoke;
-}
+}*/
