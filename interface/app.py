@@ -22,6 +22,11 @@ app = Flask(__name__)
 # app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.secret_key = b'8\xfb\xe6b\x84=\x7fl\xf0m\xcc\x92\xc1\x1f:\xcew\xdbq\x0eY\xe3\xdb\xcf'
 
+plugins = {'892ae9fe-9d1b-4dc6-87a3-66f5695a9971': 'LXD',
+           'b5947df7-ff6e-4b72-827b-a6f5b2be6b70': 'Docker',
+           '809839f2-b511-489d-a8cf-8c80d714893e': 'native',
+           '8fb33188-846c-45f8-83df-2a25e6b78049': 'KVM'}
+
 
 @app.route('/')
 def index():
