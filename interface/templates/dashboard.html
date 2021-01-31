@@ -17,6 +17,7 @@
 <nav>
     <h1>DASHBOARD</h1>
     <p class="subtitle"><i>Connected to {{ session['yaksIp'] }}</i></p>
+    {{ session['instances'] }}
 </nav>
 
 {% if 'nodes' in session %}
@@ -27,8 +28,8 @@
             <lable><b>{{ node }}</b></lable>
             <img src="{{ url_for('static', filename='pc-desktop.png') }}">
 
-            {% if 'instance/{}'.format(node) in session %}
-            {% set instance_id = session['instance/{}'.format(node)] %}
+            {% if node in session['instances'] %}
+            {% set instance_id = session['instances'][node] %}
             <p>Deployed instance:</p>
             <p>{{ instance_id }}</p>
                 {% if session[instance_id] == 'READY' %}
@@ -40,7 +41,7 @@
                     <input type="submit" value="Stop">
                 </form>
                     {% if session['nodes']|length() > 1 %}
-                    <form id="migrate" method="get" action="{{ url_for('migrate') }}">
+                    <form id="migrate" method="get" action="{{ url_for('migrate', node=node) }}">
                         <label for="migrate">Migrate to:</label>
                         <select name="mig_node" id="mig_node">
                             {% for mig_node in session['nodes'] %}

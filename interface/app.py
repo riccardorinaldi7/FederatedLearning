@@ -61,6 +61,7 @@ def dashboard(yaks_ip=''):
 
         session['nodes'] = nodes
         # session['instances'] = dict()
+        session['instances'] = {'node_id': 'instance_id'}
         app.logger.debug('Nodes: {}'.format(nodes))
         return render_template('dashboard.html')
 
@@ -125,16 +126,17 @@ def deploy(node=''):
     app.logger.debug('Created new instance with id: {}'.format(instance_id))
     a.fdu.configure(instance_id)
     app.logger.debug('Congratulations! You deployed the fdu. Ready to start')
-    session['instance/{}'.format(node)] = instance_id
     session[instance_id] = 'READY'
     # app.logger.debug(session['instance'])
+
+    session['instances'][node] = instance_id
     return redirect(url_for('dashboard'))
 
 
 @app.route('/start/<node>')
 def start(node=''):
     if node != '':
-        instance_id = session['instance/{}'.format(node)]
+        instance_id = session['instances'][node]
         a.fdu.start(instance_id)
         app.logger.debug('Started fdu at {}'.format(node))
         session[instance_id] = 'STARTED'
@@ -144,7 +146,7 @@ def start(node=''):
 @app.route('/stop/<node>')
 def stop(node=''):
     if node != '':
-        instance_id = session['instance/{}'.format(node)]
+        instance_id = session['instances'][node]
         a.fdu.stop(instance_id)
         app.logger.debug('Stopped fdu at {}'.format(node))
         session[instance_id] = 'STOPPED'
@@ -154,12 +156,12 @@ def stop(node=''):
 @app.route('/remove/<node>')
 def remove(node=''):
     if node != '':
-        instance_id = session['instance/{}'.format(node)]
+        instance_id = session['instances'][node]
         a.fdu.clean(instance_id)
         a.fdu.undefine(instance_id)
         app.logger.debug('Removed fdu from {}'.format(node))
         session.pop(instance_id)  # remove the instance state
-        session.pop('instance/{}'.format(node))  # remove the instance from instances
+        session['instances'].pop(node)  # remove the instance from instances
         app.logger.debug('Session updated')
     return redirect(url_for('dashboard'))
 
@@ -173,11 +175,20 @@ def offload():
     return redirect(url_for('dashboard'))
 
 
-@app.route('/migrate')
-def migrate():
+@app.route('/migrate/<node>')
+def migrate(node=''):
     mig_node = escape(request.args.get('mig_node', ''))
-    if mig_node == '':
-        app.logger.error('Migration node id not within get request')
+    if mig_node == '' or node == '':
+        app.logger.error('Source or destination node not within the request')
     else:
         app.logger.debug('Migrating FDU to {}'.format(mig_node))
+        # Here I remove and reinsert instances' dictionary from session otherwise flask doesn't detect the variable's
+        # change and doesn't update the interface
+        instances = session.get('instances')
+        session.pop('instances')
+        instance_id = instances.get(node)
+        instances.pop(node)
+        instances[str(mig_node)] = instance_id
+        session['instances'] = instances
+        app.logger.debug('Migrated FDU')
     return redirect(url_for('dashboard'))

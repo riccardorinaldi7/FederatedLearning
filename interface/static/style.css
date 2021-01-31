@@ -78,6 +78,14 @@ h1{
 	cursor: pointer;
 }
 
+#migrate{
+    margin-top: 15px;
+}
+
+#migrate select{
+    margin-bottom: 10px;
+}
+
 /*#deploy input{
     background-color: #ec9549;
 }
