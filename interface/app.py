@@ -190,5 +190,10 @@ def migrate(node=''):
         instances.pop(node)
         instances[str(mig_node)] = instance_id
         session['instances'] = instances
+
+        # Fog05 migration
+        # mig_info = a.fdu.migrate(instance_id, mig_node)
+        # app.logger.debug(mig_info)
+
         app.logger.debug('Migrated FDU')
     return redirect(url_for('dashboard'))
