@@ -1,0 +1,9 @@
+16K	/etc/fos/plugins/plugin-fdu-lxd/templates
+104K	/etc/fos/plugins/plugin-fdu-lxd
+12K	/etc/fos/plugins/plugin-os-linux/scripts
+64K	/etc/fos/plugins/plugin-os-linux
+12K	/etc/fos/plugins/plugin-net-linuxbridge/utils
+56K	/etc/fos/plugins/plugin-net-linuxbridge/templates
+184K	/etc/fos/plugins/plugin-net-linuxbridge
+20M	/etc/fos/plugins
+22M	/etc/fos/

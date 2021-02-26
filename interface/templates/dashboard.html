@@ -17,7 +17,7 @@
 <nav>
     <h1>DASHBOARD</h1>
     <p class="subtitle"><i>Connected to {{ session['yaksIp'] }}</i></p>
-    {{ session['instances'] }}
+    <!-- debug purposes {{ session['instances'] }} -->
 </nav>
 
 {% if 'nodes' in session %}
@@ -35,6 +35,9 @@
                 {% if session[instance_id] == 'READY' %}
                 <form id="start" method="get" action="{{ url_for('start', node=node) }}">
                     <input type="submit" value="Start">
+                </form>
+                <form id="remove" method="get" action="{{ url_for('remove', node=node) }}">
+                    <input type="submit" value="Remove">
                 </form>
                 {% elif session[instance_id] == 'STARTED' %}
                 <form id="stop" method="get" action="{{ url_for('stop', node=node) }}">
